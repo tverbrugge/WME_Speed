@@ -1,13 +1,42 @@
 var WME_SPEED_UNKNOWN = -987;
 
 var FRONT_ABBREVS = ["S", "N", "E", "W"]
-var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "St", "Trl", "Way"]
+var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "Rdge", "Rte", "St", "Trl", "Way"]
 var InterstateRegEx = /^I-\d\d\d? /;
 
 function SelectSection(hdr, iD, slctns) {
     this.header = hdr;
     this.id = iD;
     this.selections = slctns;
+}
+
+function hasRestrictions(segmentAttr) {
+	return ((segmentAttr.fwdRestrictions != null && segmentAttr.fwdRestrictions.length > 0)
+        || (segmentAttr.revRestrictions != null && segmentAttr.revRestrictions.length > 0))
+}
+
+function getId(name) { return document.getElementById(name); }
+
+function roadTypeToString(roadType) {
+    switch(roadType) {
+        case 1: return "Street"
+        case 2: return "Primary Street"
+        case 3: return  "Freeway"
+        case 4: return  "Ramps"
+        case 5: return  "Walking Trail"
+        case 6: return  "Major Highway"
+        case 7: return  "Minor Highway"
+        case 8: return  "Dirt road"
+        case 10: return  "Pedestrian Bw"
+        case 16: return  "Stairway"
+        case 17: return  "Private Road"
+        case 18: return  "Railroad"
+        case 19: return  "Runway/Taxiway"
+        case 20: return  "Parking Lot Road"
+        case 21: return  "Service Road"
+        default:
+            return "Unknown";
+    }
 }
 
 function isTrafficRelevant(roadType) {
@@ -43,7 +72,7 @@ function isNoDirection(segment) {
 function isInterstate(segment) {
     var sid = segment.attributes.primaryStreetID;
     if(sid) {
-        var street = wazeModel.streets.get(sid);
+        var street = Waze.model.streets.get(sid);
         var streetName = street.name; 
         if(streetName == null || streetName == "") {
             return false;
@@ -55,22 +84,27 @@ function isInterstate(segment) {
 
 function getSegmentSpeed(segment) {
     var speedToUse = 0;
-    var oneWay = isOneWay(segment);
-    if (oneWay && segment.attributes.fwdDirection) {
-        speedToUse = segment.attributes.fwdCrossSpeed;
-    } else if (oneWay && segment.attributes.revDirection) {
-        speedToUse = segment.attributes.revCrossSpeed;
-    } else {
-        // take average?  we could do a max, or a min, or ...
-        speedToUse = (segment.attributes.revCrossSpeed + segment.attributes.fwdCrossSpeed) / 2;
+    if(typeof segment.attributes.fwdDirection === "undefined") {
+        speedToUse = "NA"
     }
-    if (!isNaN(speedToUse)) {
-        speedToUse *= 0.621;
-        // convert from km/h to MPH
-        speedToUse = Math.ceil(speedToUse / 5) * 5;
-        // round up to the nearest 5 mph
-        speedToUse = Math.round(speedToUse);
-        // may not be necessary
+    else {
+        var oneWay = isOneWay(segment);
+        if (oneWay && segment.attributes.fwdDirection) {
+            speedToUse = segment.attributes.fwdCrossSpeed;
+        } else if (oneWay && segment.attributes.revDirection) {
+            speedToUse = segment.attributes.revCrossSpeed;
+        } else {
+            // take average?  we could do a max, or a min, or ...
+            speedToUse = (segment.attributes.revCrossSpeed + segment.attributes.fwdCrossSpeed) / 2;
+        }
+        if (!isNaN(speedToUse)) {
+            speedToUse *= 0.621;
+            // convert from km/h to MPH
+            speedToUse = Math.ceil(speedToUse / 5) * 5;
+            // round up to the nearest 5 mph
+            speedToUse = Math.round(speedToUse);
+            // may not be necessary
+        }
     }
     return speedToUse;
 }
@@ -177,14 +211,14 @@ Point.prototype.getLineTo = function(p2) {
 }
 function WazeLineSegment(segment, street) {
     this.cityID = street.cityID;
-    var city = wazeModel.cities.get(this.cityID);
+    var city = Waze.model.cities.get(this.cityID);
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
     this.line = getId(segment.geometry.id);
     this.streetName = null;
     this.noName = street.isEmpty;
     this.noCity = city == null || city.isEmpty;
-    this.state = this.noCity ? null : wazeModel.states.get(city.stateID);
+    this.state = this.noCity ? null : Waze.model.states.get(city.stateID);
     this.oneWay = ((this.attributes.fwdDirection + this.attributes.revDirection) == 1);
     // it is 1-way only if either is true
     this.noDirection = (!this.attributes.fwdDirection && !this.attributes.revDirection);
@@ -202,7 +236,7 @@ WazeLineSegment.prototype.getStreetName = function() {
 
     if (!this.streetName) {
         var sid = this.segment.attributes.primaryStreetID;
-        var street = wazeModel.streets.get(sid);
+        var street = Waze.model.streets.get(sid);
         if (sid && street.name !== null) {
             this.streetName = street.name;
         } else {
@@ -237,6 +271,10 @@ WMEFunction.prototype.init = function() {
 };
 WMEFunction.prototype.getModifiedAttrs = function(wazeLineSegment) {
     return new Object();
+};
+
+WMEFunction.prototype.getDetail = function(wazeLineSegment) {
+   return;
 };
 
 function WMEFunctionExtended(acheckboxId, aText) {

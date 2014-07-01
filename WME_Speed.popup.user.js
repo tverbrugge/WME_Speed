@@ -18,15 +18,69 @@ function getDirectionalSection(segment, isFreeway) {
     }
     return userString;           
 }
+function showProps(obj, objName) {
+  var result = "";
+  for (var i in obj) {
+    if (obj.hasOwnProperty(i)) {
+        result += objName + "." + i + " = " + obj[i] + "\n";
+    }
+  }
+  return result;
+}
 
+function getPropsHTML(segment, matchingActions, namingMap) {
+    matchingActions = typeof matchingActions !== 'undefined' ? matchingActions : {};
+    namingMap = typeof namingMap !== 'undefined' ? namingMap : {};
+    var userString = ""
+    if(true) {
+        userString += "<div id='segment_details' style='font-size: 0.6em'>"
+        if(false)  {
+            userString += "hasEmptyStreet: " + segment.hasEmptyStreet() + "<br />"
+            var segAddress = segment.getAddress();
+            userString += "getAddress: " + segAddress + "<br />"
+            for (var addritem in segAddress) {
+                userString += "addr item: " + addritem + "<br />"
+            }
+            var segAddressDetails = segment.getAddressDetails();
+            userString += "getAddressDetails: " + segAddressDetails + "<br />"
+            for (var addritemDetail in segAddressDetails) {
+                userString += "addr item detail: " + addritemDetail + "<br />"
+            }
+        }
+        if(true) {
+//            userString += "getRevHeading: " + segment.getRevHeading() + "<br />"
+//            userString += "getFwdHeading: " + segment.getFwdHeading() + "<br />"
+            for(var keyname in segment.attributes) {
+                var keyNameString = namingMap[keyname] ? namingMap[keyname] : keyname;
+                var action = matchingActions[keyname];
+                if(action) {
+                    var actionResult = action(segment.attributes)
+                    if(actionResult) {
+                        userString += keyNameString + ": " + actionResult + "<br />"
+                    }
+                } else {
+                    var value = segment.attributes[keyname];
+                    if(value != null) {
+                        userString += keyNameString + ": " + value + "<br />"
+                    }
+                }
+                
+            }
+        }
+        userString += "</div>"
+    }
+    return userString;
+}
 function showPopup(segment) {
-    var user = loginManager.getLoggedInUser();
+    var user = Waze.loginManager.getLoggedInUser();
 //	var segment = getCurrentHoverSegment();
-    if(segment != null) {
+    if(segment != null && segment.CLASS_NAME == "Waze.Feature.Vector.Segment") {
+//       console.log(showProps(segment, "segment"));
+//       console.log(showProps(segment.attributes, "segment.attributes"));
 //        var cmpnnts = segment.geometry.components;
 //        var compSegs = getComponentsProperties(cmpnnts);
         var popupClass = "";
-		if(segment.attributes.locked) {
+		if(segment.attributes.lockRank > 0) {
             if(segment.attributes.lockRank > user.rank) {
                 popupClass += "userlocked";
             }
@@ -37,7 +91,7 @@ function showPopup(segment) {
         var userString = "<div id='popup_container' class='" + popupClass + "'>";
         
         var sid = segment.attributes.primaryStreetID;
-        var street = wazeModel.streets.get(sid);
+        var street = Waze.model.streets.get(sid);
         if(typeof street != 'undefined') {
             var isFreeway = false;
             var streetStyleClass = 'WME_SPEED_streetSign';
@@ -74,7 +128,7 @@ function showPopup(segment) {
                 if(segment.attributes.streetIDs && segment.attributes.streetIDs.length > 0) {
                     alternateSection += "<div class='WME_SPEED_alternateName'>";
                     for(var i = 0; i < segment.attributes.streetIDs.length; i++) {
-                        var altStreet = wazeModel.streets.get(segment.attributes.streetIDs[i]);
+                        var altStreet = Waze.model.streets.get(segment.attributes.streetIDs[i]);
                         alternateSection += '<div class="' + streetStyleClass + '">' + altStreet.name + '</div>';
                     }
                     alternateSection += "</div>";
@@ -128,7 +182,7 @@ function showPopup(segment) {
                 }
                 userString += "</div>";
             }
-            var city = wazeModel.cities.get(street.cityID);
+            var city = Waze.model.cities.get(street.cityID);
             if(city && city.name) {
                 userString += "<div id='popup_street_city' class='" + streetStyleClass + "'>"
                 userString += city.name;
@@ -138,12 +192,60 @@ function showPopup(segment) {
         }
         
         var speedToUse = getSegmentSpeed(segment);
-        if(!isNaN(speedToUse)) {
+        if(!isNaN(speedToUse) || typeof speedToUse === "string") {
             userString += "<div id='popup_speed'>"
             userString += "<div id='popup_speed_header'>SPEED<br />LIMIT</div><div id='popup_speed_value'>" + speedToUse + "</div>"
             userString += "</div>";
         }
+        // roadTypeToString
+        userString += getPropsHTML(segment, 
+            {
+            'createdOn': function(segmentAttr) { 
+                var dateVal = new Date(segmentAttr.createdOn)
+                return dateToDateString(dateVal);
+            }, 
+            'updatedOn': function(segmentAttr) { 
+                var dateVal = new Date(segmentAttr.updatedOn)
+                return dateToDateString(dateVal);
+            }, 
+            'roadType' : function(segmentAttr) { return roadTypeToString(segmentAttr.roadType); },
+            'length' : function(segmentAttr) { return lengthToString(segmentAttr.length); },
+            'fwdRestrictions' : function(segmentAttr) { return hasRestrictions(segmentAttr) ? "Yes" : "No" },
+            'revRestrictions' : function(segmentAttr) {},
+            'version' : function(segmentAttr) {},
+            'separator' : function(segmentAttr) {},
+            'fromNodeID' : function(segmentAttr) {},
+            'toNodeID' : function(segmentAttr) {},
+            'level' : function(segmentAttr) {},
+            'validated' : function(segmentAttr) {},
+            'createdBy' : function(segmentAttr) {},
+            'updatedBy' : function(segmentAttr) {},
+            'primaryStreetID' : function(segmentAttr) {},
+            'streetIDs' : function(segmentAttr) {},
+            'permissions' : function(segmentAttr) {},
+            'fwdTurnsLocked' : function(segmentAttr) {},
+            'revTurnsLocked' : function(segmentAttr) {},
+            'fwdToll' : function(segmentAttr) {},
+            'revToll' : function(segmentAttr) {},
+            'allowNoDirection' : function(segmentAttr) {},
+            'lockRank' : function(segmentAttr) {},
+            'rank' : function(segmentAttr) {},
+            'type' : function(segmentAttr) {},
+            'fwdDirection' : function(segmentAttr) {},
+            'revDirection' : function(segmentAttr) {},
+        }, {'hasHNs' : "Has House Numbers",
+			'roadType' : "Road Type", 
+			'fwdRestrictions' : "Restrictions"});
+
+        var checkedMods = checkedModifiers()
+        for(var i = 0; i < checkedMods.length; i++) {
+            var checkedVal = checkedMods[i].getDetail(segment);
+            if(typeof checkedVal != 'undefined') {
+                userString += checkedMods[i].text + ': ' + checkedVal + '<br />';
+            }
+        }
         userString += "</div>"
+
         WME_SPEED_Popup.innerHTML = userString;
     }
     else {

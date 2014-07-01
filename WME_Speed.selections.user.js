@@ -76,6 +76,23 @@ highlightNoName.getBackground = function() {
 };
 
 /*
+ * highlight HOUSE NUMBERS
+ */
+var highlightHasHNs = new WMEFunction("_cbHighlightHNs", "Has House Numbers");
+highlightHasHNs.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    if (wazeLineSegment.attributes.hasHNs) {
+        modifications.color = "#0f0";
+        modifications.opacity = 0.4;
+        modifications.dasharray = "5 20";
+    }
+    return modifications;
+};
+highlightHasHNs.getBackground = function() {
+    return 'rgba(0,255,0,0.4)';
+};
+
+/*
  * highlight ALTERNATE NAME
  */
 var highlightWithAlternate = new WMEFunction("_cbHighlightWithAlternate", "With Alternate Name");
@@ -99,13 +116,14 @@ highlightConstZn.getModifiedAttrs = function(wazeLineSegment) {
     var modifications = new Object();
 
     if (!wazeLineSegment.noName && wazeLineSegment.getStreetName().indexOf('CONST ZN') != -1) {
-        modifications.color = "#FFBB00";
+        modifications.color = "#FF6600";
+        modifications.dasharray = "2 15";
         modifications.opacity = 0.7;
     }
     return modifications;
 };
 highlightConstZn.getBackground = function() {
-    return 'rgba(255,187,0,0.7)';
+    return 'rgba(255,102,0,0.7)';
 };
 
 function getCurrentHoverSegment() {
@@ -182,6 +200,9 @@ highlightOneWay.getModifiedAttrs = function(wazeLineSegment) {
 };
 highlightOneWay.getBackground = function() {
     return 'rgba(0,0,255,0.2)';
+};
+highlightOneWay.getDetail = function(segment) {
+    return isOneWay(segment);
 };
 
 /*
@@ -286,6 +307,26 @@ highlightLocked.getBackground = function() {
     return 'rgba(176,0,0,0.8)';
 };
 
+/*
+ * highlight RESTRICTIONS
+ */
+var highlightSegmentRestrictions = new WMEFunction("_cbhighlightSegmentRestrictions", "Segment Restrictions");
+highlightSegmentRestrictions.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    if (hasRestrictions(wazeLineSegment.attributes)) {
+        modifications.color = "#FAFF00";
+        modifications.dasharray = "2 15";
+        modifications.opacity = 0.8;
+    }
+    return modifications;
+};
+highlightSegmentRestrictions.getBackground = function() {
+    return 'rgba(250,255,0,0.8)';
+};
+
+/*
+ * highlight ROAD TYPE
+ */
 var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "Road Type");
 highlightRoadType.roadTypeStrings = RoadTypeString;
 highlightRoadType.getModifiedAttrs = function(wazeLineSegment) {
@@ -343,6 +384,9 @@ highlightCity.init = function() {
 };
 highlightCity.getBackground = function() {
     return 'rgba(0,255,0,0.5)';
+};
+highlightCity.getDetail = function(segment) {
+    return;
 };
 
 var highlightStreet = new WMEFunctionExtended("_cbHighlightStreet", "Street");
@@ -412,8 +456,8 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 };
 
 var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightWithAlternate, highlightCity, speedColor, highlightRoadType, highlightSameName, highlightConstZn]);
-var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked, highlightNonABOneWay]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightNoDirection, highlightToll, highlightNoName, highlightWithAlternate, highlightCity, /* speedColor, */ highlightRoadType, highlightSameName, highlightConstZn, highlightSegmentRestrictions]);
+var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked, highlightNonABOneWay, highlightHasHNs]);
 
 var selectSections = [highlightSection, geometrySection, advancedSection];
 

@@ -52,6 +52,23 @@ function generateTopDownGradient(top, bottom) {
     return stylizer;
 }
 
+function padNumber(numDigits, number) {
+   var startNum = Math.pow(10, numDigits) / 10;
+   var numStr = "" + number;
+   while(number < startNum  && startNum > 1) {
+	  numStr = "0" + numStr;
+	  startNum /= 10;
+   }
+   return numStr;
+}
+
+function dateToDateString(dateVal) {
+    return "" + dateVal.getFullYear() + "/" + padNumber(2, dateVal.getMonth()+1) + "/" + padNumber(2, dateVal.getDate());
+}
+
+function lengthToString(lengthInMeters) {
+    return Math.round(lengthInMeters * 3.28084) + " ft"
+}
 
 function calcTan(dLon, dLat) {
  return (Math.atan(dLon/dLat) / (2 * Math.PI)) * 360;

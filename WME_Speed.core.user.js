@@ -1,5 +1,10 @@
 
-var DEBUG = false;
+var DEBUG = true;
+function debug(message) {
+    if(DEBUG) {
+        console.log(message);
+    }
+}
 
 var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
@@ -11,6 +16,18 @@ var possibleActionEvents = [];
 
 
 var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
+
+function checkedModifiers() {
+    var checkedModifiers = [];
+	for (var i = 0; i < allModifiers.length; i++) {
+		var segModGroup = allModifiers[i];
+		var isChecked = getId(segModGroup.getCheckboxId()).checked
+		if (isChecked) {
+			checkedModifiers[checkedModifiers.length] = segModGroup;
+		}
+    }
+    return checkedModifiers;
+}
 
 function highlightAllSegments() {
     modifySegements(highlightNull);
@@ -46,8 +63,8 @@ function enumerateAllModifiers(work) {
 }
 
 function modifySegements(modifier) {
-    for (var seg in wazeModel.segments.objects) {
-        var segment = wazeModel.segments.get(seg);
+    for (var seg in Waze.model.segments.objects) {
+        var segment = Waze.model.segments.get(seg);
         var attributes = segment.attributes;
         var line = getId(segment.geometry.id);
 
@@ -55,7 +72,7 @@ function modifySegements(modifier) {
             var sid = attributes.primaryStreetID;
             if (sid == null)
                 continue;
-            var street = wazeModel.streets.get(sid);
+            var street = Waze.model.streets.get(sid);
 			if(street == null) {
 				continue;
 			}
@@ -70,7 +87,7 @@ function modifySegements(modifier) {
             }
 
             var roadType = attributes.roadType;
-            if (wazeMap.zoom <= 3 && (roadType < 2 || roadType > 7)) {
+            if (Waze.map.zoom <= 3 && (roadType < 2 || roadType > 7)) {
                 if (currentOpacity > 0.1) {
                     line.setAttribute("stroke", "#dd7700");
                     line.setAttribute("stroke-opacity", 0.001);
@@ -102,7 +119,7 @@ function modifySegements(modifier) {
 
 // add logged in user to drop-down list
 function initUserList() {
-    var thisUser = loginManager.getLoggedInUser();
+    var thisUser = Waze.loginManager.getLoggedInUser();
     var selectUser = getId(highlightEditor.getSelectId());
     var usrOption = document.createElement('option');
     var usrText = document.createTextNode(thisUser.userName + " (" + thisUser.rank + ")");
@@ -139,11 +156,11 @@ function populateOption(selectId, optionsMap) {
 function populateCityList() {
     var cityIds = new Object();
     cityIds[WME_SPEED_UNKNOWN] = "No City";
-    for (var cit in wazeModel.cities.objects) {
-        var city = wazeModel.cities.get(cit);
+    for (var cit in Waze.model.cities.objects) {
+        var city = Waze.model.cities.get(cit);
         if (city && cityIds[city.id] == null && city.name != null && city.name.length > 0) {
             var cityName = city.name;
-            var state = wazeModel.states.get(city.stateID);
+            var state = Waze.model.states.get(city.stateID);
             if(state && state.name != null && state.name.length > 0) {
                 cityName += ', ' + state.name;
             }
@@ -156,11 +173,11 @@ function populateCityList() {
 // populate drop-down list of editors
 function populateUserList() {
     var editorIds = new Object();
-    for (var seg in wazeModel.segments.objects) {
-        var segment = wazeModel.segments.get(seg);
+    for (var seg in Waze.model.segments.objects) {
+        var segment = Waze.model.segments.get(seg);
         var updatedBy = segment.attributes.updatedBy;
         if (editorIds[updatedBy] == null) {
-            var user = wazeModel.users.get(updatedBy);
+            var user = Waze.model.users.get(updatedBy);
             if (user == null || user.userName.match(/^world_|^usa_/) != null) {
                 continue;
             }
@@ -168,10 +185,6 @@ function populateUserList() {
         }
     }
     populateOption(highlightEditor.getSelectId(), editorIds);
-}
-
-function getId(node) {
-    return document.getElementById(node);
 }
 
 function createSectionHeader(title, opened) {
@@ -310,17 +323,22 @@ stylizer.innerHTML += "#WME_SPEED_Popup #WME_SPEED_tollRoad {background: #FFC500
 
 stylizer.innerHTML += 
 "#WME_SPEED_Popup #popup_container #popup_speed { \
-margin:.2em auto; \
-padding:.2em; \
+margin:0.2em auto; \
+padding: 0.3em; \
 text-align:center; \
-font-family:Arial, sans-serif; \
 border:solid 1px #000; \
 border-radius: .2em; \
-width:3em; \
+width:3.1em; \
+line-height: 1;\
 letter-spacing: 0.07em; \
 }"
-stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_header {font-size:0.65em;line-height:1.2em;margin:0.2em 0 0.4em;}"
-stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_value {font-size:2.0em;font-weight:bold;margin:0.2em 0;}"
+stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_header {font-size:0.65em;line-height:1.2em;margin-bottom:0.1em;padding:0;}"
+stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_value {\
+font-size:2.0em;\
+font-weight:bold;\
+margin:0.0em;\
+padding:0;\
+display:block;}"
 
 
 // add new box to the map
@@ -364,16 +382,15 @@ addonContainer.style.borderRadius = "5px";
 addonContainer.style.boxShadow = "2px 2px 5px #000"
 addonContainer.appendChild(addon);
 
-
 getId('editor-container').appendChild(stylizer);
 getId('editor-container').appendChild(addonContainer);
 
-
+debug("Hi There")
 
 // check for AM or CM, and unhide Advanced options
 var advancedMode = false;
-if (loginManager != null) {
-    thisUser = loginManager.getLoggedInUser();
+if (Waze.loginManager != null) {
+    thisUser = Waze.loginManager.getLoggedInUser();
     if (thisUser != null && thisUser.normalizedLevel >= 4) {
         advancedMode = true;
 //        initUserList();
@@ -391,6 +408,7 @@ enumerateAllModifiers(function(seg) {
 
 
 function createWazeMapEventAction(actionName) {
+    debug("register createWazeMapEventAction(actionName)");
     return function() {
         setTimeout(function() {
             highlightAllSegments();
@@ -403,16 +421,17 @@ function createWazeMapEventAction(actionName) {
 
 function analyzeNodes() {
     var wazeNodes = new Object();
-    for (var wazeNode in wazeModel.nodes.objects) {
+    for (var wazeNode in Waze.model.nodes.objects) {
         var attachedSegments = [];
         for(var wazeSegID in wazeNode.data.segIDs) {
-            attachedSegments.push(wazeModel.segments.objects[wazeSegID]);
+            attachedSegments.push(Waze.model.segments.objects[wazeSegID]);
         }
         wazeNodes[wazeNode.fid] = new WazeNode(wazeNode, attachedSegments);
     }
 }
 
 function createEventAction(eventHolderName, actionName) {
+    debug("register createEventAction(eventHolderName, actionName)");
     return function() {
         highlightAllSegments();
         populateUserList();
@@ -423,17 +442,21 @@ function createEventAction(eventHolderName, actionName) {
 }
 
 function createHighlighAction(eventHolderName, actionName) {
+    debug("register createHighlighAction(eventHolderName, actionName)");
     return function(e) {
+        if(e.feature)
+        {
         highlightSegmentMonitor.updateLatestSegment(e.feature);
         showPopup(e.feature);
         highlightSegments(hoverDependentSections);
         return true;
+        }
     };
 }
 
-// trigger code when page is fully loaded, to catch any missing bits
-window.addEventListener("load", function(e) {
-    thisUser = loginManager.getLoggedInUser();
+var loadFunction = function(e) {
+    debug("event listener for load");
+    thisUser = Waze.loginManager.getLoggedInUser();
     if (!advancedMode && thisUser.normalizedLevel >= 4) {
         advancedMode = true;
         populateUserList();
@@ -441,11 +464,11 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleControllerEvents.length; i++) {
         var eventName = possibleControllerEvents[i];
-        controller.events.register(eventName, this, createEventAction("controller", eventName));
+        Waze.controller.events.register(eventName, this, createEventAction("controller", eventName));
     }
     for (var i = 0; i < possibleWazeMapEvents.length; i++) {
         var eventName = possibleWazeMapEvents[i];
-        wazeMap.events.register(eventName, this, createWazeMapEventAction(eventName));
+        Waze.map.events.register(eventName, this, createWazeMapEventAction(eventName));
     }
     for (var i = 0; i < possiblePendingControllerEvents.length; i++) {
         var eventName = possiblePendingControllerEvents[i];
@@ -457,7 +480,7 @@ window.addEventListener("load", function(e) {
     }
     for (var i = 0; i < possibleSelectionEvents.length; i++) {
         var eventName = possibleSelectionEvents[i];
-        selectionManager.events.register(eventName, this, createEventAction("selectionManager", eventName));
+        Waze.selectionManager.events.register(eventName, this, createEventAction("selectionManager", eventName));
     }
     for (var i = 0; i < possibleSelectionModifyHoverEvents.length; i++) {
         var eventName = possibleSelectionModifyHoverEvents[i];
@@ -465,18 +488,29 @@ window.addEventListener("load", function(e) {
     }
 	for (var i = 0; i < possibleActionEvents.length; i++) {
 		var eventName = possibleActionEvents[i];
-		wazeModel.actionManager.events.register(eventName, this, createEventAction("wazeModel.actionManager", eventName));
+		Waze.model.actionManager.events.register(eventName, this, createEventAction("Waze.model.actionManager", eventName));
 	}
-	selectionManager.selectControl.events.register("featurehighlighted", this, createHighlighAction("selectionManager.selectControl", "featurehighlighted"));
+	Waze.selectionManager.selectControl.events.register("featurehighlighted", this, createHighlighAction("selectionManager.selectControl", "featurehighlighted"));
 
     if(DEBUG) {
-        selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
-        selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
-        selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
-        selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
+        Waze.selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
+        Waze.selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
+        //Waze.selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
+        // Waze.selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
 //        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){console.log("sm.mc.fh.c.activate")});
 //        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){console.log("sm.mc.fh.c.mouseover")});
 //        selectionManager.modifyControl.featureHover.register("over", this, function(){console.log("sm.mc.fh.-e.over")});
     }
-});
+}
+
+debug("registering for events for when window is marked as loaded");
+if(document.readyState === "complete") {
+    debug("Already Loaded");
+    loadFunction("");
+}
+else {
+    window.addEventListener("load", loadFunction);
+    Waze.app._events.register("change:loading", loadFunction);
+}
+// trigger code when page is fully loaded, to catch any missing bits
 
