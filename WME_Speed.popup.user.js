@@ -28,9 +28,10 @@ function showProps(obj, objName) {
   return result;
 }
 
-function getPropsHTML(segment, matchingActions, namingMap) {
+function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap) {
     matchingActions = typeof matchingActions !== 'undefined' ? matchingActions : {};
     namingMap = typeof namingMap !== 'undefined' ? namingMap : {};
+    otherItemsMap = typeof otherItemsMap !== 'undefined' ? otherItemsMap : {};
     var userString = ""
     if(true) {
         userString += "<div id='segment_details' style='font-size: 0.6em'>"
@@ -65,6 +66,15 @@ function getPropsHTML(segment, matchingActions, namingMap) {
                     }
                 }
                 
+            }
+            for(var otherName in otherItemsMap) {
+                var action = otherItemsMap[otherName];
+                if(action) {
+                    var actionResult = action(segment)
+                    if(actionResult) {
+                        userString += otherName + ": " + actionResult + "<br />"
+                    }
+                }
             }
         }
         userString += "</div>"
@@ -210,7 +220,7 @@ function showPopup(segment) {
             }, 
             'roadType' : function(segmentAttr) { return roadTypeToString(segmentAttr.roadType); },
             'length' : function(segmentAttr) { return lengthToString(segmentAttr.length); },
-            'fwdRestrictions' : function(segmentAttr) { return hasRestrictions(segmentAttr) ? "Yes" : "No" },
+            'fwdRestrictions' : function(segmentAttr) { return hasRestrictions(segmentAttr) ? "Yes" : undefined },
             'revRestrictions' : function(segmentAttr) {},
             'version' : function(segmentAttr) {},
             'separator' : function(segmentAttr) {},
@@ -225,7 +235,7 @@ function showPopup(segment) {
             'permissions' : function(segmentAttr) {},
             'fwdTurnsLocked' : function(segmentAttr) {},
             'revTurnsLocked' : function(segmentAttr) {},
-            'fwdToll' : function(segmentAttr) {},
+            'fwdToll' : function(segmentAttr) { return undefined  },
             'revToll' : function(segmentAttr) {},
             'allowNoDirection' : function(segmentAttr) {},
             'lockRank' : function(segmentAttr) {},
@@ -235,7 +245,10 @@ function showPopup(segment) {
             'revDirection' : function(segmentAttr) {},
         }, {'hasHNs' : "Has House Numbers",
 			'roadType' : "Road Type", 
-			'fwdRestrictions' : "Restrictions"});
+			'fwdRestrictions' : "Restrictions",
+            'fwdToll' : "Toll Road" }, {
+            "Segments" : function(segmnt) { return segmnt.geometry.components.length}
+            });
 
         var checkedMods = checkedModifiers()
         for(var i = 0; i < checkedMods.length; i++) {
