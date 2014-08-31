@@ -56,7 +56,7 @@ function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap) {
                 var action = matchingActions[keyname];
                 if(action) {
                     var actionResult = action(segment.attributes)
-                    if(actionResult) {
+                    if(typeof actionResult !== "undefined") {
                         userString += keyNameString + ": " + actionResult + "<br />"
                     }
                 } else {
@@ -226,7 +226,7 @@ function showPopup(segment) {
             'separator' : function(segmentAttr) {},
             'fromNodeID' : function(segmentAttr) {},
             'toNodeID' : function(segmentAttr) {},
-            'level' : function(segmentAttr) {},
+            'level' : function(segmentAttr) {return levelToString(segmentAttr.level) },
             'validated' : function(segmentAttr) {},
             'createdBy' : function(segmentAttr) {},
             'updatedBy' : function(segmentAttr) {},
@@ -246,15 +246,23 @@ function showPopup(segment) {
         }, {'hasHNs' : "Has House Numbers",
 			'roadType' : "Road Type", 
 			'fwdRestrictions' : "Restrictions",
+			'level' : "Elevation",
             'fwdToll' : "Toll Road" }, {
             "Segments" : function(segmnt) { return segmnt.geometry.components.length}
             });
 
         var checkedMods = checkedModifiers()
+        var wazeLineSeg = SegmentManager.get(segment);
         for(var i = 0; i < checkedMods.length; i++) {
-            var checkedVal = checkedMods[i].getDetail(segment);
+//            var checkedVal = checkedMods[i].getDetail(segment);
+            if(!checkedMods[i].hasIssue(wazeLineSeg)) { continue; }
+
+            var checkedVal = checkedMods[i].getModifiedAttrs(wazeLineSeg);
             if(typeof checkedVal != 'undefined') {
-                userString += checkedMods[i].text + ': ' + checkedVal + '<br />';
+                var issueDetail = checkedMods[i].getIssueDetail(wazeLineSeg)
+                if(typeof issueDetail != 'undefined' && issueDetail != null) {
+                    userString += issueDetail +  '<br />';
+                }                
             }
         }
         userString += "</div>"

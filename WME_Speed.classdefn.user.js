@@ -4,6 +4,23 @@ var FRONT_ABBREVS = ["S", "N", "E", "W"]
 var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "Rdge", "Rte", "St", "Trl", "Way"]
 var InterstateRegEx = /^I-\d\d\d? /;
 
+var ERROR_RGBA = 'rgba(187,0,0,0.7)'
+var ERROR_MODS = {color: "#B00", opacity: 0.7 };
+
+var MODOBJ_ERROR_RGBA = 'rgba(187,0,0,0.7)'
+var MODOBJ_ERROR_MODS = {color: "#B00", opacity: 0.7 };
+var MODOBJ_WARN_RGBA = 'rgba(255,17,170,0.7)'
+var MODOBJ_WARN_MODS = {color: "#FF11AA", opacity: 0.7 };
+var MODOBJ_MINOR_RGBA = 'rgba(255,208,0,0.5)'
+var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: 0.5 };
+var MODOBJ_INFO_RGBA = 'rgba(255,17,170,0.7)'
+var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: 0.7 };
+
+var PRIORITY_INFO = 1;
+var PRIORITY_MINOR = 3;
+var PRIORITY_WARN = 5;
+var PRIORITY_ERROR = 7;
+
 function SelectSection(hdr, iD, slctns) {
     this.header = hdr;
     this.id = iD;
@@ -13,6 +30,10 @@ function SelectSection(hdr, iD, slctns) {
 function hasRestrictions(segmentAttr) {
 	return ((segmentAttr.fwdRestrictions != null && segmentAttr.fwdRestrictions.length > 0)
         || (segmentAttr.revRestrictions != null && segmentAttr.revRestrictions.length > 0))
+}
+
+function levelToString(level) {
+	return level == 0 ? "Ground" : level;
 }
 
 function getId(name) { return document.getElementById(name); }
@@ -209,16 +230,103 @@ Point.prototype.getLineTo = function(p2) {
     }
     //    return new LineBearing(d, bearing);
 }
-function WazeLineSegment(segment, street) {
-    this.cityID = street.cityID;
-    var city = Waze.model.cities.get(this.cityID);
+function WazeStreet(streetId) {
+    var street = Waze.model.streets.get(streetId);
+	var streetDefined = typeof street !== "undefined"
+	if(streetDefined) {
+		this.cityID = street.cityID;
+		var city = Waze.model.cities.get(this.cityID);
+		this.noCity = city == null || city.isEmpty;
+		this.noName = street.isEmpty;
+		this.state = this.noCity ? null : Waze.model.states.get(city.stateID);
+	} else {
+		this.cityID = -1;
+		this.noCity = true;
+		this.noName = true;
+		this.state = null;
+	}
+}
+
+
+
+function WazeNode(nodeId) {
+  this.id = nodeId;
+  this.Node = Waze.model.nodes.objects[nodeId];
+  if(typeof this.Node === "undefined") { this.Node = null; }
+  this.attributes = this.Node != null ? this.Node.attributes : null;
+  this.connectionsImpl = [];
+}
+
+WazeNode.prototype.getConnectedSegments = function() {
+  if(this.connectionsImpl.length == 0 && this.attributes != null) {
+    for(var i = 0; i< this.attributes.segIDs.length; i++) {
+        var wazeSeg = SegmentManager.getFromId(this.attributes.segIDs[i])
+        if(wazeSeg != null) {
+            this.connectionsImpl[this.connectionsImpl.length] = wazeSeg;
+        }
+    }
+  }
+  return this.connectionsImpl;
+};
+
+WazeNode.prototype.isLoaded = function() {
+	return this.Node != null;
+};
+
+WazeNode.prototype.UTurnAllowed = function(segmentId) {
+    if(this.Node == null) return false;
+    var connections = this.Node.attributes.connections[segmentId + "," + segmentId];
+    return (typeof connections !== "undefined");
+};
+
+WazeNode.prototype.isDeadEnd = function() {
+    if(this.Node == null) return false;
+    return this.Node.attributes.segIDs.length < 2;
+};
+
+var NodeManager = (function () {
+
+    var cache = { };
+
+    // public sections
+    return {
+        get: function (nodeId) {
+            if(cache[nodeId]) {
+                return cache[nodeId];
+            }
+            var newNode = new WazeNode(nodeId) 
+            cache[nodeId] = newNode;
+            return newNode;
+        },
+        clear: function() {
+            cache = {};
+        }
+    }
+} ());
+
+
+
+function WazeLineSegment(segment) {
+    this.id = segment.fid;
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
+    var primStrId = this.attributes.primaryStreetID;
+    this.primaryStreetInfo = new WazeStreet(primStrId);
+    this.ToNode = this.attributes.toNodeID ? NodeManager.get(this.attributes.toNodeID) : null;
+    this.FromNode = this.attributes.fromNodeID ? NodeManager.get(this.attributes.fromNodeID) : null;
+    this.secondaryStreetInfos = [];
+    if(this.attributes.streetIDs) {
+        for(var secStrIdx = 0; secStrIdx < this.attributes.streetIDs.length; secStrIdx++) {
+            this.secondaryStreetInfos[secStrIdx] = new WazeStreet(this.attributes.streetIDs[secStrIdx]);
+        }
+    }
+    this.cityID = this.primaryStreetInfo.cityID;
     this.line = getId(segment.geometry.id);
     this.streetName = null;
-    this.noName = street.isEmpty;
-    this.noCity = city == null || city.isEmpty;
-    this.state = this.noCity ? null : Waze.model.states.get(city.stateID);
+    this.streetState = null;
+    this.noName = this.primaryStreetInfo.noName;
+    this.noCity = this.primaryStreetInfo.noCity;
+    this.state = this.primaryStreetInfo.state;
     this.oneWay = ((this.attributes.fwdDirection + this.attributes.revDirection) == 1);
     // it is 1-way only if either is true
     this.noDirection = (!this.attributes.fwdDirection && !this.attributes.revDirection);
@@ -246,8 +354,107 @@ WazeLineSegment.prototype.getStreetName = function() {
     return this.streetName;
 };
 
-function WazeNode(wazeNode, attachedSegments) {
-}
+WazeLineSegment.prototype.isDisconnected = function() {
+    var toNodeAttached = this.ToNode != null && (!this.ToNode.isDeadEnd() || !this.ToNode.isLoaded());
+    var fromNodeAttached = this.FromNode != null && (!this.FromNode.isDeadEnd() || !this.FromNode.isLoaded()); 
+    return !toNodeAttached && !fromNodeAttached;
+};
+
+WazeLineSegment.prototype.isTrafficRelevant = function() {
+    return isTrafficRelevant(this.attributes.roadType);
+};
+
+WazeLineSegment.prototype.hasExpiredRestrictions = function() {
+    if(this.attributes.fwdRestrictions != null) {
+		for(var i = 0; i < this.attributes.fwdRestrictions.length; i++) {
+			if(this.attributes.fwdRestrictions[0].isInThePast()) { return true; }
+		}
+	}
+    if(this.attributes.revRestrictions != null) {
+		for(var i = 0; i < this.attributes.revRestrictions.length; i++) {
+			if(this.attributes.revRestrictions[0].isInThePast()) { return true; }
+		}
+	}
+	return false;
+};
+
+WazeLineSegment.prototype.isIsolated = function() {
+if(false) {
+    var toNodeConnections = this.ToNode == null ? [] : this.ToNode.getConnectedSegments();
+    var toNodeCount = 0;
+    for(var i = 0; i < toNodeConnections.length; i++) {
+        if(toNodeConnections[i].id != this.id) { toNodeCount++ }
+    }
+    var fromNodeConnections = this.FromNode == null ? [] : this.FromNode.getConnectedSegments();
+    var fromNodeCount = 0;
+    for(var i = 0; i < fromNodeConnections.length; i++) {
+        if(fromNodeConnections[i].id != this.id) { fromNodeCount++ }
+    }
+    return fromNodeCount == 0 && toNodeCount == 0;
+    } else { return false; }
+};
+
+WazeLineSegment.prototype.containsUTurn = function() {
+    return this.ToNode.UTurnAllowed(this.id) || this.FromNode.UTurnAllowed(this.id);
+};
+WazeLineSegment.prototype.hasHardConnectionTo = function(segment) {
+    if(false) {
+        var connections = this.ToNode.getConnectedSegments();
+        for(var i = 0; i < connections.length; i++) {
+            var segmentOther = connections[i];
+            var isConnected = this.ToNode.attributes.connections[segment.id + "," + segmentOther.id] == true;
+            if(isConnected) {
+                return true;
+            }
+        }
+        connections = this.FromNode.getConnectedSegments();
+        for(var i = 0; i < connections.length; i++) {
+            var segmentOther = connections[i];
+            var isConnected = this.FromNode.attributes.connections[segment.id + "," + segmentOther.id] == true;
+            if(isConnected) {
+                return true;
+            }
+        }
+        return false;
+    }
+    toNodeConnection = this.ToNode.attributes.connections[this.id + "," + segment.id];
+    fromNodeConnection = this.FromNode.attributes.connections[this.id + "," + segment.id];
+    toNodeConnection = typeof toNodeConnection !== "undefined" ? toNodeConnection : false;
+    fromNodeConnection = typeof fromNodeConnection !== "undefined" ? fromNodeConnection : false;
+    
+    return toNodeConnection || fromNodeConnection;
+};
+var SegmentManager = (function () {
+
+    var cache = { };
+
+    // public sections
+    return {
+        get: function (segment) {
+            if(cache[segment.fid]) {
+                return cache[segment.fid];
+            }
+            var newSegment = new WazeLineSegment(segment);
+            cache[segment.fid] = newSegment;
+            return newSegment;
+        },
+        getFromId: function (segmentId) {
+            var retVal = cache[segmentId];
+            if(typeof retVal === "undefined" || retVal == null) { 
+                var segment = Waze.model.segments.get(segmentId);
+                if(segment != null) {
+                    // this will put it into the cache
+                    return this.get(segment);
+                }
+                return null;
+            }
+            return retVal;
+        },
+        clear: function() {
+            cache = {};
+        }
+    }
+} ());
 
 function WMEFunction(acheckboxId, aText) {
     this.checkboxId = acheckboxId;
@@ -266,15 +473,22 @@ WMEFunction.prototype.build = function(checkValue) {
     return '<input style="" type="checkbox" id="' + this.getCheckboxId() + '" ' + checkStr + '/> ' + this.text;
 };
 WMEFunction.prototype.init = function() {
-    console.log("init");
     getId(this.getCheckboxId()).onclick = highlightAllSegments;
 };
 WMEFunction.prototype.getModifiedAttrs = function(wazeLineSegment) {
     return new Object();
 };
 
-WMEFunction.prototype.getDetail = function(wazeLineSegment) {
-   return;
+WMEFunction.prototype.getIssueDetail = function(wazeLineSegment) {
+   return this.text;
+};
+
+WMEFunction.prototype.hasIssue = function(wazeLineSegment) {
+   return true;
+};
+
+WMEFunction.prototype.getPriority = function(wazeLineSegment) {
+   return PRIORITY_INFO;
 };
 
 function WMEFunctionExtended(acheckboxId, aText) {

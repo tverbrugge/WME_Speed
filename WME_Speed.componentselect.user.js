@@ -101,23 +101,18 @@ function checkForLowAngles(segmentProperties) {
 
 var highlightLowAngles = new WMEFunction("_cbHighlightLowAngles", "Low Angles");
 highlightLowAngles.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    modifications.color = "#BE0";
+    modifications.opacity = 0.5;
+    return modifications;
+};
+highlightLowAngles.hasIssue = function(wazeLineSegment) {
 	var components = wazeLineSegment.geometry.components;
 	if (components.length <= 2) {
-		return new Object();
+		return false;
 	}
-	var foundIssue = false;
-	var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-
-	if (checkForLowAngles(segmentProperties)) {
-		foundIssue = true;
-	}
-
-	var modifications = new Object();
-	if (foundIssue) {
-		modifications.color = "#BE0";
-		modifications.opacity = 0.5;
-	}
-	return modifications;
+	var segmentProperties = getComponentsProperties(components);
+    return checkForLowAngles(segmentProperties);
 };
 highlightLowAngles.getBackground = function() {
     return 'rgba(187,238,0,0.5)';
@@ -130,7 +125,7 @@ var highlightExcessComponents = new WMEFunction("_cbHighlightHighExcessComponent
 highlightExcessComponents.getModifiedAttrs = function(wazeLineSegment) {
 	var components = wazeLineSegment.geometry.components;
 	if (components.length <= 2) {
-		return new Object();
+		return;
 	}
 	var foundIssue = false;
 	var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
@@ -156,12 +151,12 @@ highlightExcessComponents.getModifiedAttrs = function(wazeLineSegment) {
 	} else if (avgLengthPerSeg < 3) {
 		foundIssue = true;
 	} 
-	var modifications = new Object();
 	if (foundIssue) {
+        var modifications = new Object();
 		modifications.color = "#FFD105";
 		modifications.opacity = 0.5;
+        return modifications;
 	}
-	return modifications;
 };
 highlightExcessComponents.getBackground = function() {
     return 'rgba(255,209,5,0.5)';
@@ -170,50 +165,36 @@ highlightExcessComponents.getBackground = function() {
 var highlightCloseComponents = new WMEFunction("_cbHighlightCloseComponents", "Close Components");
 highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
     var components = wazeLineSegment.geometry.components;
-    if (components.length <= 2) {
-        return new Object();
-    }
-    var foundIssue = false;
+    if (components.length <= 2) { return }
     var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    var issueColor = "#B00";
 
     // If the space between components is really small, we note that as an issue
     for (var i = 0; i < segmentProperties.length; i++) {
         var componentLength = segmentProperties[i].distance;
         if (componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-            foundIssue = true;
+			return MODOBJ_ERROR_MODS;
         }
     }
-    var modifications = new Object();
-    if (foundIssue) {
-        modifications.color = issueColor;
-        modifications.opacity = 0.7;
-    }
-    return modifications;
 };
 highlightCloseComponents.getBackground = function() {
-    return 'rgba(187,0,0,0.7)';
+    return MODOBJ_ERROR_RGBA;
 };
 
 var highlightZigZagsComponents = new WMEFunction("_cbHighlightZigZagsComponents", "Subtle Zig-Zags");
 highlightZigZagsComponents.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    modifications.color = "#e10";
+    modifications.opacity = 0.5;
+    return modifications;
+};
+highlightZigZagsComponents.hasIssue = function(wazeLineSegment) {
     var components = wazeLineSegment.geometry.components;
     if (components.length <= 2) {
-        return new Object();
+        return false;
     }
-    var foundIssue = false;
     var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
-    var issueColor = "#E10";
-
-    if (subtleZigZags(segmentProperties)) {
-        foundIssue = true;
-    }
-    var modifications = new Object();
-    if (foundIssue) {
-        modifications.color = issueColor;
-        modifications.opacity = 0.5;
-    }
-    return modifications;
+    
+    return subtleZigZags(segmentProperties);
 };
 highlightZigZagsComponents.getBackground = function() {
     return 'rgba(238,16,0,0.5)';

@@ -13,6 +13,7 @@ var possibleSelectionModifyEvents = ["deactivate", "featuredeselected"];
 var possibleSelectionEvents = ["selectionchanged"];
 var possibleSelectionModifyHoverEvents = [];
 var possibleActionEvents = [];
+var possibleDataEvents = ["loadend"];
 
 
 var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
@@ -72,8 +73,7 @@ function modifySegements(modifier) {
             var sid = attributes.primaryStreetID;
             if (sid == null)
                 continue;
-            var street = Waze.model.streets.get(sid);
-			if(street == null) {
+			if(Waze.model.streets.get(sid) == null) {
 				continue;
 			}
             var currentColor = line.getAttribute("stroke");
@@ -96,8 +96,15 @@ function modifySegements(modifier) {
                 continue;
             }
 
-            var wazeLineSeg = new WazeLineSegment(segment, street);
+            var wazeLineSeg = SegmentManager.get(segment);
+            if(!modifier.hasIssue(wazeLineSeg)) {
+                continue;
+            }
             var lineMods = modifier.getModifiedAttrs(wazeLineSeg);
+			
+			if((typeof lineMods === "undefined") || lineMods == null) {
+				continue;
+			}
 
             var newColor = lineMods.color ? lineMods.color : currentColor;
             line.setAttribute("stroke", newColor);
@@ -444,8 +451,7 @@ function createEventAction(eventHolderName, actionName) {
 function createHighlighAction(eventHolderName, actionName) {
     debug("register createHighlighAction(eventHolderName, actionName)");
     return function(e) {
-        if(e.feature)
-        {
+        if(e.feature) {
         highlightSegmentMonitor.updateLatestSegment(e.feature);
         showPopup(e.feature);
         highlightSegments(hoverDependentSections);
@@ -491,6 +497,15 @@ var loadFunction = function(e) {
 		Waze.model.actionManager.events.register(eventName, this, createEventAction("Waze.model.actionManager", eventName));
 	}
 	Waze.selectionManager.selectControl.events.register("featurehighlighted", this, createHighlighAction("selectionManager.selectControl", "featurehighlighted"));
+    
+    var loadEventFunction = createEventAction("Waze.controller.events", "loadend");
+    Waze.controller.events.register("loadend", this, function(e) {
+        console.log("Clearing node manager");
+        NodeManager.clear();
+        SegmentManager.clear();
+        loadEventFunction.call();
+    });
+
 
     if(DEBUG) {
         Waze.selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
