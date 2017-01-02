@@ -25,7 +25,7 @@ if ('undefined' == typeof __WME_SPEED_SCOPE_RUN__) {
         setTimeout(function() {
             document.body.appendChild(script);
             document.body.removeChild(script);
-        }, 1500);
+        }, 4500);
     })();
 
     // Stop running, because we know Greasemonkey actually runs us in

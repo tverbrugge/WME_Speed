@@ -1,6 +1,11 @@
-var WME_SPEED_Popup = document.createElement('div');
-WME_SPEED_Popup.id = 'WME_SPEED_Popup';
-getId('editor-container').appendChild(WME_SPEED_Popup);
+var WME_SPEED_Popup;
+function initPopup() {
+    WME_SPEED_Popup = document.createElement('div');
+    WME_SPEED_Popup.id = 'WME_SPEED_Popup';
+    getId('editor-container').appendChild(WME_SPEED_Popup);    
+}
+
+
 
 function getDirectionalSection(segment, isFreeway) {
     var userString = "";
@@ -28,7 +33,12 @@ function showProps(obj, objName) {
   return result;
 }
 
-function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap) {
+function getSegmentIcons(segment) {
+
+}
+
+function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap, ignoredItems) {
+    "use strict";
     matchingActions = typeof matchingActions !== 'undefined' ? matchingActions : {};
     namingMap = typeof namingMap !== 'undefined' ? namingMap : {};
     otherItemsMap = typeof otherItemsMap !== 'undefined' ? otherItemsMap : {};
@@ -52,11 +62,14 @@ function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap) {
 //            userString += "getRevHeading: " + segment.getRevHeading() + "<br />"
 //            userString += "getFwdHeading: " + segment.getFwdHeading() + "<br />"
             for(var keyname in segment.attributes) {
+                if(ignoredItems.indexOf(keyname) != -1) {
+                    continue;
+                }
                 var keyNameString = namingMap[keyname] ? namingMap[keyname] : keyname;
                 var action = matchingActions[keyname];
                 if(action) {
                     var actionResult = action(segment.attributes)
-                    if(typeof actionResult !== "undefined") {
+                    if(typeof actionResult !== "undefined" && actionResult != null) {
                         userString += keyNameString + ": " + actionResult + "<br />"
                     }
                 } else {
@@ -81,7 +94,26 @@ function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap) {
     }
     return userString;
 }
+
+function FeatureDetail(detailKey, htmlGetter, turnOnIcon, iconString) {
+    this.detailKey = detailKey;
+    this.htmlGetter = function(segment) {
+    }
+    if(typeof htmlGetter !== 'undefined') {
+        this.htmlGetter = htmlGetter;
+    }
+    this.turnOnIcon = function(segment) {
+        return false;
+    }
+    if(typeof turnOnIcon !== 'undefined') {
+        this.turnOnIcon = turnOnIcon;
+    }
+    this.iconString = iconString;
+}
+
 function showPopup(segment) {
+    "use strict";
+    debug("showPopup segment.CLASS_NAME == " + segment.CLASS_NAME);
     var user = Waze.loginManager.getLoggedInUser();
 //	var segment = getCurrentHoverSegment();
     if(segment != null && segment.CLASS_NAME == "Waze.Feature.Vector.Segment") {
@@ -106,6 +138,9 @@ function showPopup(segment) {
             var isFreeway = false;
             var streetStyleClass = 'WME_SPEED_streetSign';
 			switch(segment.attributes.roadType) {
+            case 2 : // Primary Street
+                streetStyleClass = 'WME_SPEED_primaryStreet';
+                break;                
 			case 3 : //freeway
                 isFreeway = true;
                 break;
@@ -139,7 +174,9 @@ function showPopup(segment) {
                     alternateSection += "<div class='WME_SPEED_alternateName'>";
                     for(var i = 0; i < segment.attributes.streetIDs.length; i++) {
                         var altStreet = Waze.model.streets.get(segment.attributes.streetIDs[i]);
+						if(altStreet) {
                         alternateSection += '<div class="' + streetStyleClass + '">' + altStreet.name + '</div>';
+						}
                     }
                     alternateSection += "</div>";
                 }
@@ -162,7 +199,7 @@ function showPopup(segment) {
                 userString += getDirectionalSection(segment, isFreeway);
 
                 userString += "<div id='popup_street_name' class='" + streetStyleClass + "'>";
-                var streetNamePieces = streetName.split('/');
+                var streetNamePieces = streetName.split(' / ');
                 for(var snpIndex = 0; snpIndex < streetNamePieces.length; snpIndex++) {
                     var prefixStr = "";
                     var suffixStr = "";
@@ -193,18 +230,28 @@ function showPopup(segment) {
                 userString += "</div>";
             }
             var city = Waze.model.cities.get(street.cityID);
-            if(city && city.name) {
+            if(city && city.attributes.name) {
                 userString += "<div id='popup_street_city' class='" + streetStyleClass + "'>"
-                userString += city.name;
+                userString += city.attributes.name;
                 userString += "</div>"
             }
             userString += alternateSection;
         }
+        userString += "<div id='popup_icon_section'>ICON SECTION</div>"
         
-        var speedToUse = getSegmentSpeed(segment);
+        // var speedToUse = getSegmentSpeed(segment);
+        var speedToUse = getSegmentSpeedLimit(segment);
         if(!isNaN(speedToUse) || typeof speedToUse === "string") {
+            var speedToUseStr = "" + speedToUse;
+            var speedNote = "";
+            if(!isSameSpeedLimitBothDirections(segment)) { speedNote = "&ne;&alefsym;" }
+                
+            var popupSpeedClass = 'popup-speed-value';
+            if(!isSpeedLimitVerified(segment)) {
+                popupSpeedClass += ' popup-speed-value-unverified';
+            }
             userString += "<div id='popup_speed'>"
-            userString += "<div id='popup_speed_header'>SPEED<br />LIMIT</div><div id='popup_speed_value'>" + speedToUse + "</div>"
+            userString += "<div id='popup_speed_header'>SPEED<br />LIMIT</div><div id='popup_speed_value' class='" + popupSpeedClass + "'>" + speedToUseStr + "<span class='popup_speed_note'>" + speedNote + "</span></div>"
             userString += "</div>";
         }
         // roadTypeToString
@@ -212,44 +259,51 @@ function showPopup(segment) {
             {
             'createdOn': function(segmentAttr) { 
                 var dateVal = new Date(segmentAttr.createdOn)
-                return dateToDateString(dateVal);
+                return dateToDateString(dateVal) + " by " + getEditorName(segmentAttr.createdBy);
             }, 
             'updatedOn': function(segmentAttr) { 
                 var dateVal = new Date(segmentAttr.updatedOn)
-                return dateToDateString(dateVal);
+                return dateToDateString(dateVal) + " by " + getEditorName(segmentAttr.updatedBy);
             }, 
             'roadType' : function(segmentAttr) { return roadTypeToString(segmentAttr.roadType); },
+            'hasHNs' : function(segmentAttr) { return segmentAttr.hasHNs ? "Yes" : undefined },
+            'hasClosures' : function(segmentAttr) { return segmentAttr.hasClosures ? "Yes" : undefined },
             'length' : function(segmentAttr) { return lengthToString(segmentAttr.length); },
             'fwdRestrictions' : function(segmentAttr) { return hasRestrictions(segmentAttr) ? "Yes" : undefined },
-            'revRestrictions' : function(segmentAttr) {},
-            'version' : function(segmentAttr) {},
+            'fwdMaxSpeedUnverified' : function(segmentAttr) { return segmentAttr.fwdMaxSpeedUnverified ? "unverified" : undefined },
+            'revMaxSpeedUnverified' : function(segmentAttr) { return segmentAttr.revMaxSpeedUnverified ? "unverified" : undefined },
+            'fwdMaxSpeed' : function(segmentAttr) {},
+            'revMaxSpeed' : function(segmentAttr) {},
             'separator' : function(segmentAttr) {},
-            'fromNodeID' : function(segmentAttr) {},
-            'toNodeID' : function(segmentAttr) {},
             'level' : function(segmentAttr) {return levelToString(segmentAttr.level) },
             'validated' : function(segmentAttr) {},
-            'createdBy' : function(segmentAttr) {},
-            'updatedBy' : function(segmentAttr) {},
-            'primaryStreetID' : function(segmentAttr) {},
-            'streetIDs' : function(segmentAttr) {},
+            'createdBy' : function(segmentAttr) {  },
+            'updatedBy' : function(segmentAttr) {  },
+//            'primaryStreetID' : function(segmentAttr) {  },
+            'streetIDs' : function(segmentAttr) { },
             'permissions' : function(segmentAttr) {},
             'fwdTurnsLocked' : function(segmentAttr) {},
             'revTurnsLocked' : function(segmentAttr) {},
             'fwdToll' : function(segmentAttr) { return undefined  },
             'revToll' : function(segmentAttr) {},
             'allowNoDirection' : function(segmentAttr) {},
-            'lockRank' : function(segmentAttr) {},
+            'lockRank' : function(segmentAttr) { return segmentAttr.lockRank == null ? null :  segmentAttr.lockRank + 1 },
             'rank' : function(segmentAttr) {},
             'type' : function(segmentAttr) {},
             'fwdDirection' : function(segmentAttr) {},
             'revDirection' : function(segmentAttr) {},
+            'fromConnections' : function(segmentAttr) {},
+            'toConnections' : function(segmentAttr) {},
         }, {'hasHNs' : "Has House Numbers",
 			'roadType' : "Road Type", 
 			'fwdRestrictions' : "Restrictions",
 			'level' : "Elevation",
-            'fwdToll' : "Toll Road" }, {
-            "Segments" : function(segmnt) { return segmnt.geometry.components.length}
-            });
+            'fwdToll' : "Toll Road",
+             'lockRank' : "Rank",
+             'hasClosures' : "Has Closures" }, 
+        {
+         "Nodes" : function(segmnt) { return segmnt.geometry.components.length}
+        }, ['revRestrictions', 'version', 'fromNodeID', 'toNodeID', 'geometry']);
 
         var checkedMods = checkedModifiers()
         var wazeLineSeg = SegmentManager.get(segment);

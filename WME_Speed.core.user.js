@@ -1,10 +1,4 @@
 
-var DEBUG = true;
-function debug(message) {
-    if(DEBUG) {
-        console.log(message);
-    }
-}
 
 var possibleWazeMapEvents = ["mouseout", "zoomend"];
 var possibleControllerEvents = ["loadend"];
@@ -36,6 +30,7 @@ function highlightAllSegments() {
 }
 
 function highlightSegments(modifiers) {
+    "use strict";
     if(!modifiers) {
         modifiers = allModifiers;
     }
@@ -64,18 +59,21 @@ function enumerateAllModifiers(work) {
 }
 
 function modifySegements(modifier) {
+    "use strict";
     for (var seg in Waze.model.segments.objects) {
         var segment = Waze.model.segments.get(seg);
         var attributes = segment.attributes;
         var line = getId(segment.geometry.id);
 
         if (line != null) {
+             if(false) {
             var sid = attributes.primaryStreetID;
             if (sid == null)
                 continue;
 			if(Waze.model.streets.get(sid) == null) {
 				continue;
 			}
+             }
             var currentColor = line.getAttribute("stroke");
             var currentOpacity = line.getAttribute("stroke-opacity");
             var currentDashes = line.getAttribute("stroke-dasharray");
@@ -105,6 +103,7 @@ function modifySegements(modifier) {
 			if((typeof lineMods === "undefined") || lineMods == null) {
 				continue;
 			}
+            debug("seg = " + seg)
 
             var newColor = lineMods.color ? lineMods.color : currentColor;
             line.setAttribute("stroke", newColor);
@@ -165,16 +164,24 @@ function populateCityList() {
     cityIds[WME_SPEED_UNKNOWN] = "No City";
     for (var cit in Waze.model.cities.objects) {
         var city = Waze.model.cities.get(cit);
-        if (city && cityIds[city.id] == null && city.name != null && city.name.length > 0) {
-            var cityName = city.name;
-            var state = Waze.model.states.get(city.stateID);
+        if (city && cityIds[city.attributes.id] == null && city.attributes.name != null && city.attributes.name.length > 0) {
+            var cityName = city.attributes.name;
+            var state = Waze.model.states.get(city.attributes.stateID);
             if(state && state.name != null && state.name.length > 0) {
                 cityName += ', ' + state.name;
             }
-            cityIds[city.id] = cityName;
+            cityIds[city.attributes.id] = cityName;
         }
     }
     populateOption(highlightCity.getSelectId(), cityIds);  
+}
+
+function getEditorName(editorId) {
+    var user = Waze.model.users.get(editorId);
+    if (user == null || user.userName == null || user.userName.match(/^world_|^usa_/) != null) {
+        return null;
+    }
+    return user.userName;
 }
 
 // populate drop-down list of editors
@@ -184,11 +191,11 @@ function populateUserList() {
         var segment = Waze.model.segments.get(seg);
         var updatedBy = segment.attributes.updatedBy;
         if (editorIds[updatedBy] == null) {
-            var user = Waze.model.users.get(updatedBy);
-            if (user == null || user.userName.match(/^world_|^usa_/) != null) {
+            var user = getEditorName(updatedBy);
+            if (user == null) {
                 continue;
             }
-            editorIds[updatedBy] = user.userName;
+            editorIds[updatedBy] = user;
         }
     }
     populateOption(highlightEditor.getSelectId(), editorIds);
@@ -303,19 +310,20 @@ stylizer.innerHTML += "#WME_SPEED_Popup #popup_container {text-align: center;fon
 stylizer.innerHTML += "#WME_SPEED_Popup #popup_container.locked {border:dashed 2px #f00;}"
 stylizer.innerHTML += "#WME_SPEED_Popup #popup_container.userlocked {border:solid 2px #f00;}"
 
-stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_street_name {font-size:.8em; margin:0;padding:0;line-height:1em;}"
-stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_street_name #street_name_prefix {font-size: .6em;vertical-align:middle;}"
-stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_street_name #street_name_suffix {font-size: .65em;vertical-align:top;}"
+stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_street_name {font-size:.8em; margin:0;padding:0;line-height:1em;} \
+#WME_SPEED_Popup #popup_container #popup_street_name #street_name_prefix {font-size: .6em;vertical-align:middle;} \
+#WME_SPEED_Popup #popup_container #popup_street_name #street_name_suffix {font-size: .65em;vertical-align:top;}"
 
 stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_street_city {font-size:.8em;margin:1px 0 0 0;padding:0;line-height:1em;}"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_parkingLot, #WME_SPEED_Popup .WME_SPEED_privateStreet { background-color:#aaa;color:#000;font-style:italic;}"
-stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_streetSign {background: #006F53; color:#fff;}"
+stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_streetSign, #WME_SPEED_Popup .WME_SPEED_primaryStreet {background: #006F53; color:#fff;}"
+stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_primaryStreet {font-weight: bold; line-height:1.3em;}"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_trailSign {background: #8C6019; color:#000; font-weight:bold;}"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_dirtRoadSign {background: #754546; color:#E2C99B; font-weight:normal;}"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_railroadSign {background: #fff; color:#000; font-weight:normal; border: solid 1px #000;}"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_unknownName {font-style:italic; }"
 stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_alternateName {font-style:italic; border: solid 1px white; font-size:.7em;padding:0;line-height:.95em;  }"
-stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_parkingLotSign {\
+stylizer.innerHTML += "#WME_SPEED_Popup .WME_SPEED_parkingLot {\
 height:21px;\
 padding-right:17px;\
 background-position:right center;\
@@ -338,7 +346,11 @@ border-radius: .2em; \
 width:3.1em; \
 line-height: 1;\
 letter-spacing: 0.07em; \
-}"
+}\
+.popup-speed-value-unverified { font-style: italic; }\
+.popup_speed_note { font-size: .4em; }\
+\
+"
 stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_header {font-size:0.65em;line-height:1.2em;margin-bottom:0.1em;padding:0;}"
 stylizer.innerHTML += "#WME_SPEED_Popup #popup_container #popup_speed #popup_speed_value {\
 font-size:2.0em;\
@@ -438,8 +450,9 @@ function analyzeNodes() {
 }
 
 function createEventAction(eventHolderName, actionName) {
-    debug("register createEventAction(eventHolderName, actionName)");
+    debug("register createEventAction(" + eventHolderName + "," + actionName + ")");
     return function() {
+        debug("EventAction(eventHolderName, actionName)");
         highlightAllSegments();
         populateUserList();
         populateCityList();
@@ -451,9 +464,10 @@ function createEventAction(eventHolderName, actionName) {
 function createHighlighAction(eventHolderName, actionName) {
     debug("register createHighlighAction(eventHolderName, actionName)");
     return function(e) {
-        if(e.feature) {
-        highlightSegmentMonitor.updateLatestSegment(e.feature);
-        showPopup(e.feature);
+        if(e.feature.model) {
+        debug("HighlightAction(eventHolderName, actionName)");
+        highlightSegmentMonitor.updateLatestSegment(e.feature.model);
+        showPopup(e.feature.model);
         highlightSegments(hoverDependentSections);
         return true;
         }
@@ -461,7 +475,9 @@ function createHighlighAction(eventHolderName, actionName) {
 }
 
 var loadFunction = function(e) {
+    "use strict";
     debug("event listener for load");
+    initPopup();
     thisUser = Waze.loginManager.getLoggedInUser();
     if (!advancedMode && thisUser.normalizedLevel >= 4) {
         advancedMode = true;
@@ -505,10 +521,16 @@ var loadFunction = function(e) {
         SegmentManager.clear();
         loadEventFunction.call();
     });
+    Waze.model.actionManager.events.register("afteraction", this, function(e) {
+        console.log("Clearing node manager");
+        NodeManager.clear();
+        SegmentManager.clear();
+        loadEventFunction.call();
+    });
 
 
     if(DEBUG) {
-        Waze.selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
+//        Waze.selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
         Waze.selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
         //Waze.selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
         // Waze.selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
