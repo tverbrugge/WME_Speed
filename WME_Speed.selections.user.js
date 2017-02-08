@@ -920,6 +920,42 @@ highlightShortSegments.getBackground = function() {
 };
 
 /*
+ * highlight NODE_DENSITY
+ */
+var highlightNodeDensityOfSegment = new WMEFunction("_cbhighlightNodeDensityOfSegment", "Node Density");
+
+highlightNodeDensityOfSegment.getNodeDensity = function(segment) {
+    var numComponents = segment.geometry.components.length;
+//    console.log("numComponents " + numComponents)
+    var length = segment.length;
+//    console.log("length " + length)
+    if(length == 0) { return 0 } // Why would this happen?
+    return (numComponents - 2) / length;
+};
+highlightNodeDensityOfSegment.getModifiedAttrs = function(wazeLineSegment) {
+    var density = this.getNodeDensity(wazeLineSegment);
+    var indexedDensity = density > 0.5 ? 0.5 : density;
+    var opacityVal = getScaledNumberInRange(indexedDensity, 2, 0.2, 0.8);
+//    return null;
+    var dashSpacing = Math.round(getScaledNumberInRange(indexedDensity, 2, 2, 14));
+//    modifications.dasharray = "2 15";
+//    return {color: "#00f", opacity: opacityVal, width :10, dasharray: dashSpacing + " 15" };
+    return {dasharray: dashSpacing + " 15", color: "#00f", opacity: opacityVal };
+};
+highlightNodeDensityOfSegment.hasIssue = function(wazeLineSegment) {
+    return wazeLineSegment.geometry.components.length > 2;
+};
+highlightNodeDensityOfSegment.getIssueDetail = function(segment) {
+    var nodeDensity =  this.getNodeDensity(segment) ;
+    nodeDensity = Math.round(nodeDensity * 100) / 100
+    return "Node Density of " + nodeDensity + " per meter";
+};
+highlightNodeDensityOfSegment.getBackground = function() {
+    return MODOBJ_ERROR_RGBA;
+};
+
+
+/*
  * highlight NULL
  */
 var highlightNull = new WMEFunction("_cbHighlightNull", "NULL");
@@ -943,7 +979,7 @@ var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_sec
 // speedColor
 
 
-var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
+var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNodeDensityOfSegment, highlightNoTerm, highlightShortSegments]);
 var issuesSection = new SelectSection("Potential Issues", 'WME_issues_section', [highlightSelfConnectivity, highlightExtraSpaces, highlightEmptyAltStreetName, highlightInvalidAbbrevs, highlightInvalidNames, highlightNoDirection, highlightThreePointSegment, highlightDisconnected, highlightNoIncoming, highlightIsolated, highlightSegmentExpiredRestrictions, highlightUnconfirmedSegment]);
 // Disabled:
 // ----------------

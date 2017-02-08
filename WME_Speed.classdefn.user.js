@@ -444,7 +444,7 @@ function WazeLineSegment(segment) {
     this.length = this.attributes.length;
     this.roadType = this.attributes.roadType;
     this.segment = segment;
-    this.unpaved = segment.flagAttributes.unpaved;
+    this.unpaved = (segment.attributes.flags & 0x10) != 0;
 }
 
 WazeLineSegment.prototype.getStreetName = function() {

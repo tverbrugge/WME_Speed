@@ -47,6 +47,16 @@ if (!Array.prototype.filter)
   };
 }
 
+function getScaledNumberInRange(index, maximum, startRange, endRange) {
+    if (index > maximum) {
+        index = maximum;
+    }
+    var totalRangeSpan = endRange - startRange;
+    var indexOnRange = index / maximum;
+    var rangeVal = startRange + (totalRangeSpan * indexOnRange);
+    return rangeVal;
+}    
+
 function getScaledHex(index, maximum, startColor, endColor) {
     if (index >= maximum) {
         index = maximum - 1;

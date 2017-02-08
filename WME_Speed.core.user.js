@@ -105,7 +105,10 @@ function modifySegements(modifier) {
 			}
             debug("seg = " + seg)
 
-            var newColor = lineMods.color ? lineMods.color : currentColor;
+            var newColor = currentColor;
+            if(typeof lineMods.color !== "undefined" && lineMods.color != null) {
+                newColor = lineMods.color;
+            }
             line.setAttribute("stroke", newColor);
 
             if (lineMods.color && lineMods.color != currentColor) {
