@@ -145,18 +145,41 @@ function populateOption(selectId, optionsMap) {
     }
     select.options.length = 0;
 
-    var foundSelected = false;
+//    var foundSelected = false;
     for (var key in optionsMap) {
         var text = optionsMap[key];
         var selectOption = document.createElement('option');
         var selectText = document.createTextNode(text);
         if (currentId != null && key == currentId) {
             selectOption.setAttribute('selected', true);
-            foundSelected = true;
+  //          foundSelected = true;
         }
         selectOption.setAttribute('value', key);
         selectOption.appendChild(selectText);
         select.appendChild(selectOption);
+    }
+
+}
+
+function populateRadioButtons(selectId, optionsMap) {
+    var select = getId(selectId);
+    var currentId = null;
+    if (select.selectedIndex >= 0) {
+        currentId = select.options[select.selectedIndex].value;
+    }
+    for (var key in optionsMap) {
+        var text = optionsMap[key];
+        var selectOption = document.createElement('input');
+        selectOption.setAttribute("name", selectId + "_option");
+        selectOption.setAttribute("id", selectId + "_option" + key);
+        selectOption.setAttribute("type", "radio");
+        selectOption.setAttribute("value", key);
+        if (currentId != null && key == currentId) {
+            selectOption.setAttribute('checked', true);
+        }
+        select.appendChild(selectOption);
+        var selectText = document.createTextNode(text);
+        select.appendChild(selectText);
     }
 
 }

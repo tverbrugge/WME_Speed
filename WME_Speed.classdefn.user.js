@@ -23,9 +23,9 @@ var MODOBJ_ERROR_MODS = {color: "#B00", opacity: DEFAULT_OPACITY, width :15 };
 var MODOBJ_WARN_RGBA = 'rgba(255,17,170,0.7)'
 var MODOBJ_WARN_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY, width : 15 };
 var MODOBJ_MINOR_RGBA = 'rgba(255,208,0,0.5)'
-var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: DEFAULT_OPACITY, width : 15 };
+var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: DEFAULT_OPACITY, width : 12 };
 var MODOBJ_INFO_RGBA = 'rgba(255,17,170,0.7)'
-var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY * 0.8, width : 15 };
+var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY * 0.8, width : 12 };
 
 var PRIORITY_INFO = 1;
 var PRIORITY_MINOR = 3;
@@ -92,6 +92,27 @@ function isTrafficRelevant(roadType) {
         case 7:
         //"Service Road"
         case 21:
+            return true;
+        default:
+            return false;
+    }
+}
+
+function isSpeedDataRelevant(wazeLineSegment) {
+    if(wazeLineSegment.isRoundAbout()) {
+        return false;
+    }
+    switch(wazeLineSegment.attributes.roadType) {
+        //"Streets"
+        case 1:
+        //"Primary Street"
+        case 2:
+        //"Freeways",
+        case 3:
+        //"Major Highway",
+        case 6:
+        //"Minor Highway",
+        case 7:
             return true;
         default:
             return false;

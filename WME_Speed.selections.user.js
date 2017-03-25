@@ -98,9 +98,74 @@ highlightSpeedLimit.init = function() {
     populateOption(this.getSelectId(), speedLimits);  
     getId(this.getCheckboxId()).onclick = highlightAllSegments;
     getId(this.getSelectId()).onchange = highlightAllSegments;
-
 };
 
+/* 
+ * HIGHLIGHT NO-SPEED DATA
+ */
+var highlightNoSpeedData = new WMEFunctionExtended("_cbHighlightNoSpeedData", "No Speed Data");
+highlightNoSpeedData.getModifiedAttrs = function(wazeLineSegment) {
+    
+    var selectNoData = getId(this.getSelectId() + "_option" + "noData");
+    var selectShowData = getId(this.getSelectId() + "_option" + "data");
+    if(!selectShowData.checked && !selectNoData.checked) {
+        return;
+    }
+    if(selectShowData.checked && isSpeedLimitVerified(wazeLineSegment) && !isNaN(getSegmentSpeedLimit(wazeLineSegment.segment))) {
+        return this.getSpeedDataModifications(wazeLineSegment);
+    } 
+    if(selectNoData.checked && (!isSpeedLimitVerified(wazeLineSegment) || !isSpeedLimitFullySet(wazeLineSegment.segment) || isNaN(getSegmentSpeedLimit(wazeLineSegment.segment)))) {
+        return MODOBJ_MINOR_MODS;
+    }
+};
+highlightNoSpeedData.getSpeedDataModifications = function(wazeLineSegment) {
+    var modifications = new Object();
+    var speedToUse = getSegmentSpeedLimit(wazeLineSegment.segment);
+    if (isNaN(speedToUse)) {
+        speedToUse = 0;
+    }
+    if (speedToUse < 1) {
+        modifications.color = "#000";
+        modifications.opacity = 0.2;
+        modifications.width = MIN_WIDTH_SPEED;
+        return modifications;
+    }
+    speedToUse = Math.max(speedToUse, MIN_SPEED_LIMIT);
+    var percentageWidth = (Math.min(speedToUse, MAX_SPEED_LIMIT - 1) - (MIN_SPEED_LIMIT)) / (MAX_SPEED_LIMIT - MIN_SPEED_LIMIT);
+    modifications.opacity =  ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
+    if(isSpeedLimitFullySet(wazeLineSegment.segment)) {
+        modifications.width = 6; //((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    }
+    else {
+        modifications.width = 3; //((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    }
+    modifications.color = getScaledColour(speedToUse, 100);
+    if(!isSpeedLimitVerified(wazeLineSegment.segment)) {
+        modifications.dasharray = "10,10";
+    }
+    return modifications;
+};
+highlightNoSpeedData.getBackground = function() {
+    return 'rgba(255,255,0,0.6)';
+};
+highlightNoSpeedData.hasIssue = function(wazeLineSegment) {
+    return isSpeedDataRelevant(wazeLineSegment);//  && !wazeLineSegment.isRoundAbout();
+//    return isSpeedLimitVerified(wazeLineSegment) && !isNaN(getSegmentSpeedLimit(wazeLineSegment.segment));
+};
+
+highlightNoSpeedData.buildExtended = function() {
+    return '<form id="' + this.getSelectId() + '" />';
+}
+highlightNoSpeedData.init = function() {
+	var speedLimitOptions = new Object();
+    speedLimitOptions["noData"] = "No Data";
+    speedLimitOptions["data"] = "Data";
+    populateRadioButtons(this.getSelectId(), speedLimitOptions);
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
+    getId(this.getSelectId()).onchange = highlightAllSegments;
+};
+ 
+ 
 /*
  * HIGHLIGHT UNVERIFIED SPEED LIMIT
  */
@@ -172,22 +237,6 @@ highlightSpeedLimit2.init = function() {
     populateOption(this.getSelectId(), speedLimits);  
     getId(this.getCheckboxId()).onclick = highlightAllSegments;
     getId(this.getSelectId()).onchange = highlightAllSegments;
-};
-
-/*
- * HIGHLIGHT NO CITY
- */
-var highlightNoCity = new WMEFunction("_cbHighlightNoCity", "No City");
-highlightNoCity.getModifiedAttrs = function(wazeLineSegment) {
-    if (wazeLineSegment.noCity) {
-        var modifications = new Object();
-        modifications.color = "#ff0";
-        modifications.opacity = 0.3;
-        return modifications;
-    }
-};
-highlightNoCity.getBackground = function() {
-    return 'rgba(255,255,0,0.3)';
 };
 
 /*
@@ -973,7 +1022,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 /*
  * Sections of highlighters
  */
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightUnpaved, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, highlightConstZn, /*highlightSegmentRestrictions,*/ highlightNonGroundElevation, highlightSpeedLimit, highlightUnverifiedSpeedLimit, highlightSameName]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightUnpaved, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, highlightConstZn, /*highlightSegmentRestrictions,*/ highlightNonGroundElevation, highlightSpeedLimit, highlightUnverifiedSpeedLimit, highlightNoSpeedData, highlightSameName]);
 // Disabled:
 // ----------------
 // speedColor
