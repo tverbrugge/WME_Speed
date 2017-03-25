@@ -1022,7 +1022,7 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 /*
  * Sections of highlighters
  */
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightUnpaved, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, highlightConstZn, /*highlightSegmentRestrictions,*/ highlightNonGroundElevation, highlightSpeedLimit, highlightUnverifiedSpeedLimit, highlightNoSpeedData, highlightSameName]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightUnpaved, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, /*highlightConstZn, highlightSegmentRestrictions,*/ highlightNonGroundElevation, /*highlightSpeedLimit,*/ highlightUnverifiedSpeedLimit, highlightNoSpeedData, highlightSameName]);
 // Disabled:
 // ----------------
 // speedColor

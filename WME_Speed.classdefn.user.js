@@ -56,7 +56,7 @@ function getId(name) { return document.getElementById(name); }
 
 function roadTypeToString(roadType) {
     switch(roadType) {
-        case 1: return "Street"
+        case 1: return "Local Street"
         case 2: return "Primary Street"
         case 3: return "Freeway"
         case 4: return "Ramps"
