@@ -56,7 +56,7 @@ function getId(name) { return document.getElementById(name); }
 
 function roadTypeToString(roadType) {
     switch(roadType) {
-        case 1: return "Street"
+        case 1: return "Local Street"
         case 2: return "Primary Street"
         case 3: return "Freeway"
         case 4: return "Ramps"
@@ -92,6 +92,27 @@ function isTrafficRelevant(roadType) {
         case 7:
         //"Service Road"
         case 21:
+            return true;
+        default:
+            return false;
+    }
+}
+
+function isSpeedDataRelevant(wazeLineSegment) {
+    if(wazeLineSegment.isRoundAbout()) {
+        return false;
+    }
+    switch(wazeLineSegment.attributes.roadType) {
+        //"Streets"
+        case 1:
+        //"Primary Street"
+        case 2:
+        //"Freeways",
+        case 3:
+        //"Major Highway",
+        case 6:
+        //"Minor Highway",
+        case 7:
             return true;
         default:
             return false;
@@ -444,7 +465,8 @@ function WazeLineSegment(segment) {
     this.length = this.attributes.length;
     this.roadType = this.attributes.roadType;
     this.segment = segment;
-    this.unpaved = segment.flagAttributes.unpaved;
+//    this.unpaved = segment.flagAttributes.unpaved;
+    this.unpaved = (segment.attributes.flags & 0x10) != 0;
 }
 
 WazeLineSegment.prototype.getStreetName = function() {

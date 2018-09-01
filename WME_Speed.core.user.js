@@ -105,7 +105,10 @@ function modifySegements(modifier) {
 			}
             debug("seg = " + seg)
 
-            var newColor = lineMods.color ? lineMods.color : currentColor;
+            var newColor = currentColor;
+            if(typeof lineMods.color !== "undefined" && lineMods.color != null) {
+                newColor = lineMods.color;
+            }
             line.setAttribute("stroke", newColor);
 
             if (lineMods.color && lineMods.color != currentColor) {
@@ -142,14 +145,14 @@ function populateOption(selectId, optionsMap) {
     }
     select.options.length = 0;
 
-    var foundSelected = false;
+//    var foundSelected = false;
     for (var key in optionsMap) {
         var text = optionsMap[key];
         var selectOption = document.createElement('option');
         var selectText = document.createTextNode(text);
         if (currentId != null && key == currentId) {
             selectOption.setAttribute('selected', true);
-            foundSelected = true;
+  //          foundSelected = true;
         }
         selectOption.setAttribute('value', key);
         selectOption.appendChild(selectText);
@@ -158,15 +161,40 @@ function populateOption(selectId, optionsMap) {
 
 }
 
+function populateRadioButtons(selectId, optionsMap) {
+    var select = getId(selectId);
+    var currentId = null;
+    if (select.selectedIndex >= 0) {
+        currentId = select.options[select.selectedIndex].value;
+    }
+    for (var key in optionsMap) {
+        var text = optionsMap[key];
+        var selectOption = document.createElement('input');
+        selectOption.setAttribute("name", selectId + "_option");
+        selectOption.setAttribute("id", selectId + "_option" + key);
+        selectOption.setAttribute("type", "radio");
+        selectOption.setAttribute("value", key);
+        if (currentId != null && key == currentId) {
+            selectOption.setAttribute('checked', true);
+        }
+        select.appendChild(selectOption);
+        var selectText = document.createTextNode(text);
+        select.appendChild(selectText);
+    }
+
+}
+
 // populate drop-down list of Cities
 function populateCityList() {
     var cityIds = new Object();
     cityIds[WME_SPEED_UNKNOWN] = "No City";
+
     for (var cit in W.model.cities.objects) {
         var city = W.model.cities.get(cit);
         if (city && cityIds[city.attributes.id] == null && city.attributes.name != null && city.attributes.name.length > 0) {
             var cityName = city.attributes.name;
             var state = W.model.states.get(city.attributes.stateID);
+
             if(state && state.name != null && state.name.length > 0) {
                 cityName += ', ' + state.name;
             }
@@ -178,6 +206,7 @@ function populateCityList() {
 
 function getEditorName(editorId) {
     var user = W.model.users.get(editorId);
+
     if (user == null || user.userName == null || user.userName.match(/^world_|^usa_/) != null) {
         return null;
     }
@@ -479,6 +508,7 @@ var loadFunction = function(e) {
     debug("event listener for load");
     initPopup();
     thisUser = W.loginManager.getLoggedInUser();
+
     if (!advancedMode && thisUser.normalizedLevel >= 4) {
         advancedMode = true;
         populateUserList();
@@ -527,6 +557,12 @@ var loadFunction = function(e) {
         SegmentManager.clear();
         loadEventFunction.call();
     });
+    Waze.model.actionManager.events.register("afteraction", this, function(e) {
+        console.log("Clearing node manager");
+        NodeManager.clear();
+        SegmentManager.clear();
+        loadEventFunction.call();
+    });
 
 
     if(DEBUG) {
@@ -534,6 +570,7 @@ var loadFunction = function(e) {
         W.selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
         //W.selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
         // W.selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
+
 //        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){console.log("sm.mc.fh.c.activate")});
 //        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){console.log("sm.mc.fh.c.mouseover")});
 //        selectionManager.modifyControl.featureHover.register("over", this, function(){console.log("sm.mc.fh.-e.over")});

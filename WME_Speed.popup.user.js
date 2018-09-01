@@ -2,7 +2,9 @@ var WME_SPEED_Popup;
 function initPopup() {
     WME_SPEED_Popup = document.createElement('div');
     WME_SPEED_Popup.id = 'WME_SPEED_Popup';
+
     getId('WazeMap').appendChild(WME_SPEED_Popup);    
+   // getId('editor-container').appendChild(WME_SPEED_Popup);    
 }
 
 
@@ -115,6 +117,7 @@ function showPopup(segment) {
     "use strict";
     debug("showPopup segment.CLASS_NAME == " + segment.CLASS_NAME);
     var user = W.loginManager.getLoggedInUser();
+
 //	var segment = getCurrentHoverSegment();
     if(segment != null && segment.CLASS_NAME == "W.Feature.Vector.Segment") {
 //       console.log(showProps(segment, "segment"));
@@ -174,6 +177,7 @@ function showPopup(segment) {
                     alternateSection += "<div class='WME_SPEED_alternateName'>";
                     for(var i = 0; i < segment.attributes.streetIDs.length; i++) {
                         var altStreet = W.model.streets.get(segment.attributes.streetIDs[i]);
+
 						if(altStreet) {
                         alternateSection += '<div class="' + streetStyleClass + '">' + altStreet.name + '</div>';
 						}
@@ -230,6 +234,7 @@ function showPopup(segment) {
                 userString += "</div>";
             }
             var city = W.model.cities.get(street.cityID);
+
             if(city && city.attributes.name) {
                 userString += "<div id='popup_street_city' class='" + streetStyleClass + "'>"
                 userString += city.attributes.name;
