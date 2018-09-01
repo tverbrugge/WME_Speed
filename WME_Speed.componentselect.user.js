@@ -164,6 +164,8 @@ highlightExcessComponents.getBackground = function() {
 
 var highlightCloseComponents = new WMEFunction("_cbHighlightCloseComponents", "Close Components");
 highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
+    "use strict";
+	if(wazeLineSegment.isRoundAbout()) { return; }
     var components = wazeLineSegment.geometry.components;
     if (components.length <= 2) { return }
     var segmentProperties = getComponentsProperties(wazeLineSegment.geometry.components);
@@ -172,12 +174,13 @@ highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
     for (var i = 0; i < segmentProperties.length; i++) {
         var componentLength = segmentProperties[i].distance;
         if (componentLength < MIN_DISTANCE_BETWEEN_COMPONENTS) {
-			return MODOBJ_ERROR_MODS;
+			return MODOBJ_WARN_MODS;
         }
     }
 };
 highlightCloseComponents.getBackground = function() {
-    return MODOBJ_ERROR_RGBA;
+    "use strict";
+    return MODOBJ_WARN_RGBA;
 };
 
 var highlightZigZagsComponents = new WMEFunction("_cbHighlightZigZagsComponents", "Subtle Zig-Zags");

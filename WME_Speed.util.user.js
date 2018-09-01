@@ -109,3 +109,21 @@ function lengthToString(lengthInMeters) {
 function calcTan(dLon, dLat) {
  return (Math.atan(dLon/dLat) / (2 * Math.PI)) * 360;
 }
+
+function removeDecimals(strWithDecimal) {
+  var decimalNumber = /(\d+\.\d+)/g;
+  var found = strWithDecimal.match(decimalNumber);
+  if(found == null) {
+    return strWithDecimal;
+  }
+  for (var i=0,  tot=found.length; i < tot; i++) {
+    var foundNum =found[i];
+//    console.log(foundNum);
+    var startIndx = strWithDecimal.indexOf(foundNum)
+    var preString = strWithDecimal.substring(0, startIndx)
+    var postString = strWithDecimal.substring(startIndx + foundNum.length)
+    strWithDecimal = preString + postString;
+    console.log("Stripping " + foundNum + " = " + strWithDecimal);
+  }
+  return strWithDecimal;
+}

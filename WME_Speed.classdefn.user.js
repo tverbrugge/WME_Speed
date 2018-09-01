@@ -1,25 +1,41 @@
+
+var DEBUG = false;
+function debug(message) {
+    if(DEBUG) {
+        console.log(message);
+    }
+}
+
+
 var WME_SPEED_UNKNOWN = -987;
 
 var FRONT_ABBREVS = ["S", "N", "E", "W"]
-var END_ABBREVS = ["Ave", "Blvd", "Cir", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Rd", "Rdge", "Rte", "St", "Trl", "Way"]
+var END_ABBREVS = ["Ave", "Blvd", "Cir", "Cres", "Cswy", "Ct", "Dr", "Hts", "Ln", "Loop", "Pkwy", "Pl", "Plz", "Rd", "Rdge", "Rte", "St", "Ter", "Trl", "Way"]
 var InterstateRegEx = /^I-\d\d\d? /;
 
+var DEFAULT_OPACITY = 0.5;
+
 var ERROR_RGBA = 'rgba(187,0,0,0.7)'
-var ERROR_MODS = {color: "#B00", opacity: 0.7 };
+var ERROR_MODS = {color: "#B00", opacity: DEFAULT_OPACITY, width : 15 };
 
 var MODOBJ_ERROR_RGBA = 'rgba(187,0,0,0.7)'
-var MODOBJ_ERROR_MODS = {color: "#B00", opacity: 0.7 };
+var MODOBJ_ERROR_MODS = {color: "#B00", opacity: DEFAULT_OPACITY, width :15 };
 var MODOBJ_WARN_RGBA = 'rgba(255,17,170,0.7)'
-var MODOBJ_WARN_MODS = {color: "#FF11AA", opacity: 0.7 };
+var MODOBJ_WARN_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY, width : 15 };
 var MODOBJ_MINOR_RGBA = 'rgba(255,208,0,0.5)'
-var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: 0.5 };
+var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: DEFAULT_OPACITY, width : 15 };
 var MODOBJ_INFO_RGBA = 'rgba(255,17,170,0.7)'
-var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: 0.7 };
+var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY * 0.8, width : 15 };
 
 var PRIORITY_INFO = 1;
 var PRIORITY_MINOR = 3;
 var PRIORITY_WARN = 5;
 var PRIORITY_ERROR = 7;
+
+function getSegmentId(segment) {
+    // return segment.fid;
+    return segment.attributes.id;
+}
 
 function SelectSection(hdr, iD, slctns) {
     this.header = hdr;
@@ -42,21 +58,21 @@ function roadTypeToString(roadType) {
     switch(roadType) {
         case 1: return "Street"
         case 2: return "Primary Street"
-        case 3: return  "Freeway"
-        case 4: return  "Ramps"
-        case 5: return  "Walking Trail"
-        case 6: return  "Major Highway"
-        case 7: return  "Minor Highway"
-        case 8: return  "Dirt road"
-        case 10: return  "Pedestrian Bw"
-        case 16: return  "Stairway"
-        case 17: return  "Private Road"
-        case 18: return  "Railroad"
-        case 19: return  "Runway/Taxiway"
-        case 20: return  "Parking Lot Road"
-        case 21: return  "Service Road"
-        default:
-            return "Unknown";
+        case 3: return "Freeway"
+        case 4: return "Ramps"
+        case 5: return "Walking Trail"
+        case 6: return "Major Highway"
+        case 7: return "Minor Highway"
+        case 8: return "Unpaved"
+        case 10: return "Pedestrian Bw"
+        case 15: return "Ferry"
+        case 16: return "Stairway"
+        case 17: return "Private Road"
+        case 18: return "Railroad"
+        case 19: return "Runway/Taxiway"
+        case 20: return "Parking Lot Road"
+        case 21: return "Service Road"
+        default: return "Unknown";
     }
 }
 
@@ -93,7 +109,7 @@ function isNoDirection(segment) {
 function isInterstate(segment) {
     var sid = segment.attributes.primaryStreetID;
     if(sid) {
-        var street = Waze.model.streets.get(sid);
+        var street = W.model.streets.get(sid);
         var streetName = street.name; 
         if(streetName == null || streetName == "") {
             return false;
@@ -101,6 +117,94 @@ function isInterstate(segment) {
         return segment.attributes.roadType == 3 && streetName.match(InterstateRegEx) != null;
     }
     return false;
+}
+function getSegmentSpeedLimit(segment)
+{
+    var speedToUse = 0;
+    if(typeof segment.attributes.fwdMaxSpeed === "undefined") {
+        speedToUse = "NA"
+    }
+    else {
+        var oneWay = isOneWay(segment);
+        if (oneWay && segment.attributes.fwdDirection) {
+            speedToUse = segment.attributes.fwdMaxSpeed;
+        } else if (oneWay && segment.attributes.revDirection) {
+            speedToUse = segment.attributes.revMaxSpeed;
+        } else {
+            // take average?  we could do a max, or a min, or ...
+            speedToUse = (segment.attributes.fwdMaxSpeed + segment.attributes.revMaxSpeed) / 2;
+        }
+        if (!isNaN(speedToUse) && speedToUse > 0) {
+            // convert from km/h to MPH
+            speedToUse *= 0.621;
+            // round up to the nearest 5 mph
+//            speedToUse = Math.round(speedToUse / 5) * 5;
+            speedToUse = Math.round(speedToUse);
+            // may not be necessary
+        } else { speedToUse = undefined }
+        
+    }
+    return speedToUse;
+}
+
+function isSameSpeedLimitBothDirections(segment)
+{
+    var speedToUse = 0;
+    if(typeof segment.attributes.fwdMaxSpeed === "undefined") {
+        return true;
+    }
+    if( isOneWay(segment)) { return true; }
+    var fwdSpeed = segment.attributes.fwdMaxSpeed;
+    var revSpeed = segment.attributes.revMaxSpeed;
+    return fwdSpeed == revSpeed;
+}
+
+function isSpeedLimitFullySet(segment) {
+    if(typeof segment.attributes.fwdMaxSpeed === "undefined") {
+        return false
+    }
+    else {
+        var oneWay = isOneWay(segment);
+        if (oneWay && segment.attributes.fwdDirection) {
+            return segment.attributes.fwdMaxSpeed != null && !isNaN(segment.attributes.fwdMaxSpeed);
+        } else if (oneWay && segment.attributes.revDirection) {
+            return segment.attributes.revMaxSpeed != null && !isNaN(segment.attributes.revMaxSpeed);
+        } else {
+            return (segment.attributes.fwdMaxSpeed != null && !isNaN(segment.attributes.fwdMaxSpeed)) && 
+                (segment.attributes.revMaxSpeed != null && !isNaN(segment.attributes.revMaxSpeed));
+        }
+    }
+    return false;
+}
+
+function isSpeedLimitVerified(segment) {
+    var verified = true;
+    if(typeof segment.attributes.fwdMaxSpeed === "undefined") {
+        verified = false
+    }
+    else {
+        var oneWay = isOneWay(segment);
+        if (oneWay && segment.attributes.fwdDirection) {
+            verified = !segment.attributes.fwdMaxSpeedUnverified;
+        } else if (oneWay && segment.attributes.revDirection) {
+            verified = !segment.attributes.revMaxSpeedUnverified;
+        } else {
+            verified = !segment.attributes.fwdMaxSpeedUnverified && !segment.attributes.revMaxSpeedUnverified;
+        }
+    }
+    return verified;
+}
+
+function getSegmentSpeedLimit2(segment)
+{
+    var speedToUse = [];
+    if (segment.attributes.fwdDirection) {
+        speedToUse.push(segment.attributes.fwdMaxSpeed);
+    } 
+    if (segment.attributes.revDirection) {
+        speedToUse.push(segment.attributes.revMaxSpeed);
+    }
+    return speedToUse;
 }
 
 function getSegmentSpeed(segment) {
@@ -231,14 +335,14 @@ Point.prototype.getLineTo = function(p2) {
     //    return new LineBearing(d, bearing);
 }
 function WazeStreet(streetId) {
-    var street = Waze.model.streets.get(streetId);
+    var street = W.model.streets.get(streetId);
 	var streetDefined = typeof street !== "undefined"
 	if(streetDefined) {
 		this.cityID = street.cityID;
-		var city = Waze.model.cities.get(this.cityID);
-		this.noCity = city == null || city.isEmpty;
+		var city = W.model.cities.get(this.cityID);
+		this.noCity = city == null || city.attributes.isEmpty;
 		this.noName = street.isEmpty;
-		this.state = this.noCity ? null : Waze.model.states.get(city.stateID);
+		this.state = this.noCity ? null : W.model.states.get(city.stateID);
 	} else {
 		this.cityID = -1;
 		this.noCity = true;
@@ -251,7 +355,7 @@ function WazeStreet(streetId) {
 
 function WazeNode(nodeId) {
   this.id = nodeId;
-  this.Node = Waze.model.nodes.objects[nodeId];
+  this.Node = W.model.nodes.objects[nodeId];
   if(typeof this.Node === "undefined") { this.Node = null; }
   this.attributes = this.Node != null ? this.Node.attributes : null;
   this.connectionsImpl = [];
@@ -280,8 +384,9 @@ WazeNode.prototype.UTurnAllowed = function(segmentId) {
 };
 
 WazeNode.prototype.isDeadEnd = function() {
-    if(this.Node == null) return false;
-    return this.Node.attributes.segIDs.length < 2;
+    if(this.Node == null) return true;
+//	console.log("" + this.attributes.segIDs.length);
+    return this.attributes.segIDs.length < 2;
 };
 
 var NodeManager = (function () {
@@ -307,12 +412,13 @@ var NodeManager = (function () {
 
 
 function WazeLineSegment(segment) {
-    this.id = segment.fid;
+    // this.id = segment.fid;
+    this.id = getSegmentId(segment);
     this.geometry = segment.geometry;
     this.attributes = segment.attributes;
     var primStrId = this.attributes.primaryStreetID;
     this.primaryStreetInfo = new WazeStreet(primStrId);
-    this.ToNode = this.attributes.toNodeID ? NodeManager.get(this.attributes.toNodeID) : null;
+    this.ToNode   = this.attributes.toNodeID   ? NodeManager.get(this.attributes.toNodeID)   : null;
     this.FromNode = this.attributes.fromNodeID ? NodeManager.get(this.attributes.fromNodeID) : null;
     this.secondaryStreetInfos = [];
     if(this.attributes.streetIDs) {
@@ -338,13 +444,14 @@ function WazeLineSegment(segment) {
     this.length = this.attributes.length;
     this.roadType = this.attributes.roadType;
     this.segment = segment;
+    this.unpaved = segment.flagAttributes.unpaved;
 }
 
 WazeLineSegment.prototype.getStreetName = function() {
 
     if (!this.streetName) {
         var sid = this.segment.attributes.primaryStreetID;
-        var street = Waze.model.streets.get(sid);
+        var street = W.model.streets.get(sid);
         if (sid && street.name !== null) {
             this.streetName = street.name;
         } else {
@@ -354,9 +461,17 @@ WazeLineSegment.prototype.getStreetName = function() {
     return this.streetName;
 };
 
+WazeLineSegment.prototype.isRoundAbout = function () {
+	return this.attributes.junctionID != null;
+};
+
 WazeLineSegment.prototype.isDisconnected = function() {
-    var toNodeAttached = this.ToNode != null && (!this.ToNode.isDeadEnd() || !this.ToNode.isLoaded());
-    var fromNodeAttached = this.FromNode != null && (!this.FromNode.isDeadEnd() || !this.FromNode.isLoaded()); 
+//    var toNodeAttached = this.ToNode != null && (!this.ToNode.isDeadEnd() || !this.ToNode.isLoaded());
+    var toNodeAttached = this.ToNode != null && !this.ToNode.isDeadEnd();
+//    var fromNodeAttached = this.FromNode != null && (!this.FromNode.isDeadEnd() || !this.FromNode.isLoaded()); 
+    var fromNodeAttached = this.FromNode != null && !this.FromNode.isDeadEnd(); 
+//	console.log("fromNodeAttached  = " + fromNodeAttached + " and toNodeAttached = " + toNodeAttached);
+	// console.log("FromNode  = " + this.FromNode.attributes.segIDs.length);
     return !toNodeAttached && !fromNodeAttached;
 };
 
@@ -431,17 +546,17 @@ var SegmentManager = (function () {
     // public sections
     return {
         get: function (segment) {
-            if(cache[segment.fid]) {
-                return cache[segment.fid];
+            if(cache[getSegmentId(segment)]) {
+                return cache[getSegmentId(segment)];
             }
             var newSegment = new WazeLineSegment(segment);
-            cache[segment.fid] = newSegment;
+            cache[getSegmentId(segment)] = newSegment;
             return newSegment;
         },
         getFromId: function (segmentId) {
             var retVal = cache[segmentId];
             if(typeof retVal === "undefined" || retVal == null) { 
-                var segment = Waze.model.segments.get(segmentId);
+                var segment = W.model.segments.get(segmentId);
                 if(segment != null) {
                     // this will put it into the cache
                     return this.get(segment);
@@ -550,4 +665,11 @@ function HighlightSegmentMonitor() {
 }
 
 var highlightSegmentMonitor = new HighlightSegmentMonitor();
+
+function WazeProperty(propertyName) {
+  this.propertyName = propertyName;
+}
+
+WazeProperty.prototype.getIcon = function(segmentAttrs) {
+};
 

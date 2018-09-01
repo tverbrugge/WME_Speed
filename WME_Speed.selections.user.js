@@ -18,9 +18,10 @@ var RoadTypeString = {
 
 var speedColor = new WMEFunction("_cbHighlightSpeed", "Speed");
 var MAX_THRESHOLD_SPEED = 100;
+var MIN_THRESHOLD_SPEED = 2;
 var MIN_WIDTH_SPEED = 4;
 var MAX_WIDTH_SPEED = 10;
-var MIN_OPACITY_SPEED = 0.4;
+var MIN_OPACITY_SPEED = 0.6;
 var MAX_OPACITY_SPEED = 0.99;
 
 speedColor.getModifiedAttrs = function(wazeLineSegment) {
@@ -29,16 +30,148 @@ speedColor.getModifiedAttrs = function(wazeLineSegment) {
     if (isNaN(speedToUse)) {
         speedToUse = 0;
     }
-    var percentageWidth = Math.min(speedToUse, MAX_THRESHOLD_SPEED - 1) / MAX_THRESHOLD_SPEED;
-    modifications.opacity = ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
-    modifications.width = ((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
     if (speedToUse < 1) {
         modifications.color = "#000";
         modifications.opacity = 0.2;
-    } else {
+        modifications.width = MIN_WIDTH_SPEED;
+        return modifications;
+    }
+    speedToUse = Math.max(speedToUse, MIN_THRESHOLD_SPEED);
+    var percentageWidth = (Math.min(speedToUse, MAX_THRESHOLD_SPEED - 1) - (MIN_THRESHOLD_SPEED)) / (MAX_THRESHOLD_SPEED - MIN_THRESHOLD_SPEED);
+    modifications.width = ((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    {
         modifications.color = getScaledColour(speedToUse, 100);
+        modifications.opacity = ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
     }
     return modifications;
+};
+
+var MAX_SPEED_LIMIT = 80;
+var MIN_SPEED_LIMIT = 10;
+
+/*
+ * HIGHLIGHT SPEED LIMIT
+ */
+var highlightSpeedLimit = new WMEFunctionExtended("_cbHighlightSpeedLimit", "Speed Limit");
+highlightSpeedLimit.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    var speedToUse = getSegmentSpeedLimit(wazeLineSegment.segment);
+    if (isNaN(speedToUse)) {
+        speedToUse = 0;
+    }
+    if (speedToUse < 1) {
+        modifications.color = "#000";
+        modifications.opacity = 0.2;
+        modifications.width = MIN_WIDTH_SPEED;
+        return modifications;
+    }
+    speedToUse = Math.max(speedToUse, MIN_SPEED_LIMIT);
+    var percentageWidth = (Math.min(speedToUse, MAX_SPEED_LIMIT - 1) - (MIN_SPEED_LIMIT)) / (MAX_SPEED_LIMIT - MIN_SPEED_LIMIT);
+    modifications.opacity =  ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
+    if(isSpeedLimitFullySet(wazeLineSegment.segment)) {
+        modifications.width = 6; //((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    }
+    else {
+        modifications.width = 3; //((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    }
+    modifications.color = getScaledColour(speedToUse, 100);
+    if(!isSpeedLimitVerified(wazeLineSegment.segment)) {
+        modifications.dasharray = "10,10";
+    }
+    return modifications;
+};
+highlightSpeedLimit.getBackground = function() {
+    return 'rgba(255,255,0,0.6)';
+};
+highlightSpeedLimit.hasIssue = function(wazeLineSegment) {
+    return isSpeedLimitVerified(wazeLineSegment) && !isNaN(getSegmentSpeedLimit(wazeLineSegment.segment));
+};
+
+highlightSpeedLimit.buildExtended = function() {
+    return '<select id="' + this.getSelectId() + '" />';
+}
+highlightSpeedLimit.init = function() {
+	var speedLimits = new Object();
+	for(var speedLimit = 5; speedLimit <= 85; speedLimit+=5) {
+		speedLimits["" + speedLimit]  = "Speed > " + (speedLimit);
+	}
+    populateOption(this.getSelectId(), speedLimits);  
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
+    getId(this.getSelectId()).onchange = highlightAllSegments;
+
+};
+
+/*
+ * HIGHLIGHT UNVERIFIED SPEED LIMIT
+ */
+var highlightUnverifiedSpeedLimit = new WMEFunctionExtended("_highlightUnverifiedSpeedLimit", "Unverified Speed Limit");
+highlightUnverifiedSpeedLimit.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    var speedToUse = getSegmentSpeedLimit(wazeLineSegment.segment);
+    if (isNaN(speedToUse)) {
+        speedToUse = 0;
+    }
+    if (speedToUse < 1) {
+        modifications.color = "#000";
+        modifications.opacity = 0.2;
+        modifications.width = MIN_WIDTH_SPEED;
+        return modifications;
+    }
+    speedToUse = Math.max(speedToUse, MIN_SPEED_LIMIT);
+    modifications.opacity = 0.95; // ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
+    modifications.width = isSpeedLimitFullySet(wazeLineSegment.segment) ? 6 : 3;
+    modifications.color = getScaledColour(speedToUse, 100);
+    modifications.dasharray = "5,10";
+    return modifications;
+};
+highlightUnverifiedSpeedLimit.getBackground = function() {
+    return 'rgba(255,255,0,0.6)';
+};
+highlightUnverifiedSpeedLimit.hasIssue = function(wazeLineSegment) {
+    return !isSpeedLimitVerified(wazeLineSegment);
+};
+
+
+/*
+ * HIGHLIGHT SPEED LIMIT 2
+ */
+var highlightSpeedLimit2 = new WMEFunctionExtended("_cbHighlightSpeedLimit2", "Speed Limit2");
+highlightSpeedLimit2.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    var speedToUse = getSegmentSpeedLimit2(wazeLineSegment.segment);
+    var averageSpeed = speedToUse.length == 1 ? speedToUse[0] : ((speedToUse[0] + speedToUse[1]) / 2);
+    if (averageSpeed < 1) {
+        modifications.color = "#000";
+        modifications.opacity = 0.2;
+        modifications.width = MIN_WIDTH_SPEED;
+        return modifications;
+    }
+    averageSpeed = Math.max(averageSpeed, MIN_SPEED_LIMIT);
+    var percentageWidth = (Math.min(averageSpeed, MAX_SPEED_LIMIT - 1) - (MIN_SPEED_LIMIT)) / (MAX_SPEED_LIMIT - MIN_SPEED_LIMIT);
+    modifications.opacity = 0.95; // ((MAX_OPACITY_SPEED - MIN_OPACITY_SPEED) * percentageWidth) + MIN_OPACITY_SPEED;
+    modifications.width = 3; //((MAX_WIDTH_SPEED - MIN_WIDTH_SPEED) * percentageWidth) + MIN_WIDTH_SPEED;
+    modifications.color = getScaledColour(averageSpeed, 100);
+//    modifications.dasharray = "30,15,7,7,7,15";
+    return modifications;
+};
+highlightSpeedLimit2.getBackground = function() {
+    return 'rgba(255,255,0,0.6)';
+};
+highlightSpeedLimit2.hasIssue = function(wazeLineSegment) {
+    return getSegmentSpeedLimit2(wazeLineSegment).length == 0;
+};
+
+highlightSpeedLimit2.buildExtended = function() {
+    return '<select id="' + this.getSelectId() + '" />';
+}
+highlightSpeedLimit2.init = function() {
+	var speedLimits = new Object();
+	for(var speedLimit = 5; speedLimit <= 85; speedLimit+=5) {
+		speedLimits["" + speedLimit]  = "Speed > " + (speedLimit);
+	}
+    populateOption(this.getSelectId(), speedLimits);  
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
+    getId(this.getSelectId()).onchange = highlightAllSegments;
 };
 
 /*
@@ -62,6 +195,7 @@ highlightNoCity.getBackground = function() {
  */
 var highlightNoName = new WMEFunction("_cbHighlightUnnamed", "Unnamed Street");
 highlightNoName.getModifiedAttrs = function(wazeLineSegment) {
+    if(wazeLineSegment.isRoundAbout()) { return; }
     if (wazeLineSegment.noName) {
         if (isTrafficRelevant(wazeLineSegment.attributes.roadType)) {
             var modifications = new Object();
@@ -142,15 +276,12 @@ var highlightEmptyAltStreetName = new WMEFunction("_cbighlightEmptyAltStreetName
 highlightEmptyAltStreetName.getModifiedAttrs = function(wazeLineSegment) {
     for(var strIDIndx = 0; strIDIndx < wazeLineSegment.secondaryStreetInfos.length; strIDIndx++) {
         if(wazeLineSegment.secondaryStreetInfos[strIDIndx].noName) {
-           var modifications = new Object();
-            modifications.color = "#FF00FF";
-            modifications.opacity = 0.7;
-            return modifications;
+           return MODOBJ_MINOR_MODS;
         }
     }
 };
 highlightEmptyAltStreetName.getBackground = function() {
-    return 'rgba(255,0,255,0.7)';
+    return MODOBJ_MINOR_RGBA;
 };
 
 /*
@@ -164,10 +295,31 @@ highlightInvalidAbbrevs.hasIssue = function(wazeLineSegment) {
     if (wazeLineSegment.noName) { return false }
     var streetName = wazeLineSegment.getStreetName();
     if(!streetName) { return false }
+
+    // Decimal numbers can be ok.
+    streetName = removeDecimals(streetName);
     var idxOfPeriod = streetName.indexOf(".")
-    return (idxOfPeriod != -1 && idxOfPeriod == streetName.length - 1);
+    return (idxOfPeriod != -1);
 };
 highlightInvalidAbbrevs.getBackground = function() {
+    return MODOBJ_WARN_RGBA;
+};
+
+/*
+ * highlight inappropriate road names
+ */
+var highlightInvalidNames = new WMEFunction("_cbhighlightInvalidNames", "Invalid Road Names");
+highlightInvalidNames.getModifiedAttrs = function(wazeLineSegment) {
+    return MODOBJ_WARN_MODS;
+};
+highlightInvalidNames.hasIssue = function(wazeLineSegment) {
+    if (wazeLineSegment.noName) { return false }
+    var streetName = wazeLineSegment.getStreetName();
+    if(!streetName) { return false }
+
+    return streetName.trim().toLowerCase() == "private";
+};
+highlightInvalidNames.getBackground = function() {
     return MODOBJ_WARN_RGBA;
 };
 
@@ -314,8 +466,9 @@ function getCurrentHoverSegment() {
 var highlightSameName = new WMEFunction("_cbHighlightSameName", "Same Street Name");
 highlightSameName.getModifiedAttrs = function(wazeLineSegment) {
     var segment = getCurrentHoverSegment();
-    if (segment != null) {
+
         var highlightedStreetID = segment.attributes.primaryStreetID;
+        debug("wazeLineSegment.attributes.primaryStreetID(" + wazeLineSegment.attributes.primaryStreetID + ") === highlightedStreetID(" + highlightedStreetID + ")?")
         if (wazeLineSegment.attributes.primaryStreetID === highlightedStreetID) {
             var modifications = new Object();
             if (wazeLineSegment.segment.fid !== segment.fid) {
@@ -325,7 +478,16 @@ highlightSameName.getModifiedAttrs = function(wazeLineSegment) {
             modifications.opacity = 0.5;
             return modifications;
         }
+
+};
+highlightSameName.hasIssue = function(wazeLineSegment) {
+    var segment = getCurrentHoverSegment();
+    if (segment != null) {
+        var highlightedStreetID = segment.attributes.primaryStreetID;
+        debug("wazeLineSegment.attributes.primaryStreetID(" + wazeLineSegment.attributes.primaryStreetID + ") === highlightedStreetID(" + highlightedStreetID + ")?")
+        return (wazeLineSegment.attributes.primaryStreetID === highlightedStreetID);
     }
+    return false;
 };
 highlightSameName.getBackground = function() {
     return 'rgba(0,160,208,0.5)';
@@ -349,6 +511,44 @@ highlightToll.hasIssue = function(wazeLineSegment) {
 };
 highlightToll.getBackground = function() {
     return 'rgba(0,0,255,0.5)';
+};
+
+/*
+ * highlight UNPAVED
+ */
+var highlightUnpaved = new WMEFunction("_cbHighlightUnpaved", "Unpaved");
+highlightUnpaved.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    modifications.color =  "#a3972a";
+    modifications.opacity = 0.7;
+    modifications.dasharray = "5 15";
+    return modifications;
+};
+highlightUnpaved.hasIssue = function(wazeLineSegment) {
+    return wazeLineSegment.unpaved;
+};
+highlightUnpaved.getBackground = function() {
+    return 'rgba(163, 151, 42, 0.7)';
+};
+
+/*
+ * highlight Non Ground Elevation
+ */
+var highlightNonGroundElevation = new WMEFunction("_cbHighlightNonGroundElevation", "Non-Ground Elevation");
+highlightNonGroundElevation.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    modifications.color = "#0f0";
+    modifications.opacity = 0.5;
+//    modifications.dasharray = "5 15";
+    return modifications;
+};
+highlightNonGroundElevation.hasIssue = function(wazeLineSegment) {
+    // Ignore railroads
+    return wazeLineSegment.attributes.roadType != 18 
+     && wazeLineSegment.attributes.level != 0;
+};
+highlightNonGroundElevation.getBackground = function() {
+    return 'rgba(0,255,0,0.5)';
 };
 
 /*
@@ -421,6 +621,10 @@ highlightNoTerm.getBackground = function() {
     return MODOBJ_WARN_RGBA;
 };
 
+
+/*
+ * highlight Editor
+ */
 var highlightEditor = new WMEFunctionExtended("_cbHighlightEditor", "Specific Editor");
 highlightEditor.getModifiedAttrs = function(wazeLineSegment) {
     var selectUser = getId(highlightEditor.getSelectId());
@@ -469,12 +673,49 @@ highlightRecent.buildExtended = function() {
     return '<input type="number" min="0" max="365" size="3" value="7" id="' + this.getSelectId() + '" /> days';
 }
 highlightRecent.init = function() {
-    getId(this.getCheckboxId()).onclick = highlightSegments;
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
     getId(this.getSelectId()).onfocus = populateUserList;
-    getId(this.getSelectId()).onchange = highlightSegments;
+    getId(this.getSelectId()).onchange = highlightAllSegments;
 };
 highlightRecent.getBackground = function() {
     return 'rgba(0,255,0,0.7)';
+};
+
+/*
+ * LOCK LEVEL segments
+ */
+var highlightLockLevel = new WMEFunctionExtended("_cbHighlightLockLevel", "Lock Rank");
+highlightLockLevel.getModifiedAttrs = function(wazeLineSegment) {
+    var modifications = new Object();
+    modifications.color = "#B00";
+    modifications.opacity = 0.8;
+    return modifications;
+};
+highlightLockLevel.buildExtended = function() {
+    return '<select id="' + this.getSelectId() + '" />';
+}
+highlightLockLevel.init = function() {
+	var lockLevels = new Object();
+	for(var level = 0; level <= 5; level++) {
+		lockLevels["" + level]  = "Level > " + (level + 1);
+	}
+    populateOption(this.getSelectId(), lockLevels);  
+    getId(this.getCheckboxId()).onclick = highlightAllSegments;
+    getId(this.getSelectId()).onchange = highlightAllSegments;
+
+};
+highlightLockLevel.hasIssue = function(wazeLineSegment) {
+	var selectLockLevel = getId(this.getSelectId()).value;
+	var segmentLockLevel = wazeLineSegment.attributes.lockRank;
+	// console.log("lockLevel = " + selectLockLevel + "; segment lockLevel = " + segmentLockLevel)
+    return segmentLockLevel > selectLockLevel || (selectLockLevel == 0 && segmentLockLevel == null);
+};
+highlightLockLevel.getBackground = function() {
+    return 'rgba(176,0,0,0.8)';
+};
+highlightLockLevel.getDetail = function(segment) {
+	var segmentLockLevel = segment.attributes.lockRank;
+    return segmentLockLevel == null ? "Default (1)" : "" + (segmentLockLevel + 1)
 };
 
 /*
@@ -530,6 +771,20 @@ highlightSegmentExpiredRestrictions.getBackground = function() {
 };
 
 /*
+ * highlight Un-confirmed Street
+ */
+var highlightUnconfirmedSegment = new WMEFunction("_cbhighlightUnconfirmedSegment", "Unconfirmed Segment");
+highlightUnconfirmedSegment.getModifiedAttrs = function(wazeLineSegment) {
+    return {color: "#B00", opacity: DEFAULT_OPACITY, width :15 };
+};
+highlightUnconfirmedSegment.hasIssue = function(wazeLineSegment) {
+    return wazeLineSegment.attributes.primaryStreetID == null;
+};
+highlightUnconfirmedSegment.getBackground = function() {
+    return MODOBJ_ERROR_RGBA;
+};
+
+/*
  * highlight ROAD TYPE
  */
 var highlightRoadType = new WMEFunctionExtended("_cbHighlightRoadType", "Road Type");
@@ -569,6 +824,7 @@ highlightCity.getModifiedAttrs = function(wazeLineSegment) {
 
     var currentCityElement = getId(this.getSelectId());
     var currentCity = currentCityElement.options[currentCityElement.selectedIndex].value;
+    console.log("currentCity" + currentCity)
     if (currentCity == undefined) {
         currentCity = 0;
     }
@@ -681,19 +937,19 @@ highlightNull.getModifiedAttrs = function(wazeLineSegment) {
 /*
  * Sections of highlighters
  */
-var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, highlightSameName, highlightConstZn, highlightSegmentRestrictions]);
+var highlightSection = new SelectSection("Highlight Segments", 'WME_Segments_section', [highlightOneWay, highlightToll, highlightUnpaved, highlightNoName, highlightWithAlternate, highlightCity, highlightRoadType, highlightConstZn, /*highlightSegmentRestrictions,*/ highlightNonGroundElevation, highlightSpeedLimit, highlightUnverifiedSpeedLimit, highlightSameName]);
 // Disabled:
 // ----------------
 // speedColor
 
 
 var geometrySection = new SelectSection("Geometry", 'WME_geometry_section', [highlightExcessComponents, highlightLowAngles, highlightZigZagsComponents, highlightCloseComponents, highlightNoTerm, highlightShortSegments]);
-var issuesSection = new SelectSection("Potential Issues", 'WME_issues_section', [highlightSelfConnectivity, highlightExtraSpaces, highlightEmptyAltStreetName, highlightInvalidAbbrevs, highlightNoDirection, highlightThreePointSegment, highlightDisconnected, highlightNoIncoming, highlightIsolated, highlightSegmentExpiredRestrictions]);
+var issuesSection = new SelectSection("Potential Issues", 'WME_issues_section', [highlightSelfConnectivity, highlightExtraSpaces, highlightEmptyAltStreetName, highlightInvalidAbbrevs, highlightInvalidNames, highlightNoDirection, highlightThreePointSegment, highlightDisconnected, highlightNoIncoming, highlightIsolated, highlightSegmentExpiredRestrictions, highlightUnconfirmedSegment]);
 // Disabled:
 // ----------------
 // highlightUTurnAtEnd
 
-var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked, highlightNonABOneWay, highlightHasHNs]);
+var advancedSection = new SelectSection("Advanced", 'WME_Advanced_section', [highlightEditor, highlightRecent, highlightLocked, highlightLockLevel, highlightNonABOneWay, highlightHasHNs]);
 
 var selectSections = [highlightSection, geometrySection, issuesSection, advancedSection];
 
