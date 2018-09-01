@@ -23,9 +23,9 @@ var MODOBJ_ERROR_MODS = {color: "#B00", opacity: DEFAULT_OPACITY, width :15 };
 var MODOBJ_WARN_RGBA = 'rgba(255,17,170,0.7)'
 var MODOBJ_WARN_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY, width : 15 };
 var MODOBJ_MINOR_RGBA = 'rgba(255,208,0,0.5)'
-var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: DEFAULT_OPACITY, width : 12 };
+var MODOBJ_MINOR_MODS = {color: "#FC0", opacity: DEFAULT_OPACITY, width : 15 };
 var MODOBJ_INFO_RGBA = 'rgba(255,17,170,0.7)'
-var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY * 0.8, width : 12 };
+var MODOBJ_INFO_MODS = {color: "#FF11AA", opacity: DEFAULT_OPACITY * 0.8, width : 15 };
 
 var PRIORITY_INFO = 1;
 var PRIORITY_MINOR = 3;
@@ -130,7 +130,7 @@ function isNoDirection(segment) {
 function isInterstate(segment) {
     var sid = segment.attributes.primaryStreetID;
     if(sid) {
-        var street = Waze.model.streets.get(sid);
+        var street = W.model.streets.get(sid);
         var streetName = street.name; 
         if(streetName == null || streetName == "") {
             return false;
@@ -356,14 +356,14 @@ Point.prototype.getLineTo = function(p2) {
     //    return new LineBearing(d, bearing);
 }
 function WazeStreet(streetId) {
-    var street = Waze.model.streets.get(streetId);
+    var street = W.model.streets.get(streetId);
 	var streetDefined = typeof street !== "undefined"
 	if(streetDefined) {
 		this.cityID = street.cityID;
-		var city = Waze.model.cities.get(this.cityID);
+		var city = W.model.cities.get(this.cityID);
 		this.noCity = city == null || city.attributes.isEmpty;
 		this.noName = street.isEmpty;
-		this.state = this.noCity ? null : Waze.model.states.get(city.stateID);
+		this.state = this.noCity ? null : W.model.states.get(city.stateID);
 	} else {
 		this.cityID = -1;
 		this.noCity = true;
@@ -376,7 +376,7 @@ function WazeStreet(streetId) {
 
 function WazeNode(nodeId) {
   this.id = nodeId;
-  this.Node = Waze.model.nodes.objects[nodeId];
+  this.Node = W.model.nodes.objects[nodeId];
   if(typeof this.Node === "undefined") { this.Node = null; }
   this.attributes = this.Node != null ? this.Node.attributes : null;
   this.connectionsImpl = [];
@@ -465,6 +465,7 @@ function WazeLineSegment(segment) {
     this.length = this.attributes.length;
     this.roadType = this.attributes.roadType;
     this.segment = segment;
+//    this.unpaved = segment.flagAttributes.unpaved;
     this.unpaved = (segment.attributes.flags & 0x10) != 0;
 }
 
@@ -472,7 +473,7 @@ WazeLineSegment.prototype.getStreetName = function() {
 
     if (!this.streetName) {
         var sid = this.segment.attributes.primaryStreetID;
-        var street = Waze.model.streets.get(sid);
+        var street = W.model.streets.get(sid);
         if (sid && street.name !== null) {
             this.streetName = street.name;
         } else {
@@ -577,7 +578,7 @@ var SegmentManager = (function () {
         getFromId: function (segmentId) {
             var retVal = cache[segmentId];
             if(typeof retVal === "undefined" || retVal == null) { 
-                var segment = Waze.model.segments.get(segmentId);
+                var segment = W.model.segments.get(segmentId);
                 if(segment != null) {
                     // this will put it into the cache
                     return this.get(segment);

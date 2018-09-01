@@ -2,7 +2,9 @@ var WME_SPEED_Popup;
 function initPopup() {
     WME_SPEED_Popup = document.createElement('div');
     WME_SPEED_Popup.id = 'WME_SPEED_Popup';
-    getId('editor-container').appendChild(WME_SPEED_Popup);    
+
+    getId('WazeMap').appendChild(WME_SPEED_Popup);    
+   // getId('editor-container').appendChild(WME_SPEED_Popup);    
 }
 
 
@@ -114,9 +116,10 @@ function FeatureDetail(detailKey, htmlGetter, turnOnIcon, iconString) {
 function showPopup(segment) {
     "use strict";
     debug("showPopup segment.CLASS_NAME == " + segment.CLASS_NAME);
-    var user = Waze.loginManager.getLoggedInUser();
+    var user = W.loginManager.getLoggedInUser();
+
 //	var segment = getCurrentHoverSegment();
-    if(segment != null && segment.CLASS_NAME == "Waze.Feature.Vector.Segment") {
+    if(segment != null && segment.CLASS_NAME == "W.Feature.Vector.Segment") {
 //       console.log(showProps(segment, "segment"));
 //       console.log(showProps(segment.attributes, "segment.attributes"));
 //        var cmpnnts = segment.geometry.components;
@@ -133,7 +136,7 @@ function showPopup(segment) {
         var userString = "<div id='popup_container' class='" + popupClass + "'>";
         
         var sid = segment.attributes.primaryStreetID;
-        var street = Waze.model.streets.get(sid);
+        var street = W.model.streets.get(sid);
         if(typeof street != 'undefined') {
             var isFreeway = false;
             var streetStyleClass = 'WME_SPEED_streetSign';
@@ -173,7 +176,8 @@ function showPopup(segment) {
                 if(segment.attributes.streetIDs && segment.attributes.streetIDs.length > 0) {
                     alternateSection += "<div class='WME_SPEED_alternateName'>";
                     for(var i = 0; i < segment.attributes.streetIDs.length; i++) {
-                        var altStreet = Waze.model.streets.get(segment.attributes.streetIDs[i]);
+                        var altStreet = W.model.streets.get(segment.attributes.streetIDs[i]);
+
 						if(altStreet) {
                         alternateSection += '<div class="' + streetStyleClass + '">' + altStreet.name + '</div>';
 						}
@@ -229,7 +233,8 @@ function showPopup(segment) {
                 }
                 userString += "</div>";
             }
-            var city = Waze.model.cities.get(street.cityID);
+            var city = W.model.cities.get(street.cityID);
+
             if(city && city.attributes.name) {
                 userString += "<div id='popup_street_city' class='" + streetStyleClass + "'>"
                 userString += city.attributes.name;
