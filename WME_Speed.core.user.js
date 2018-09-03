@@ -9,8 +9,10 @@ var possibleSelectionModifyHoverEvents = [];
 var possibleActionEvents = [];
 var possibleDataEvents = ["loadend"];
 
+// var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
 
-var webStorageSupported = ('localStorage' in window) && window['localStorage'] !== null;
+var storageObject = localStorage || window.localStorage;
+var webStorageSupported = (typeof(storageObject) != "undefined");
 
 function checkedModifiers() {
     var checkedModifiers = [];
@@ -30,7 +32,6 @@ function highlightAllSegments() {
 }
 
 function highlightSegments(modifiers) {
-    "use strict";
     if(!modifiers) {
         modifiers = allModifiers;
     }
@@ -42,9 +43,9 @@ function highlightSegments(modifiers) {
 		}
 		if(webStorageSupported) {
 			if(isChecked) {
-				window.localStorage.setItem(segModGroup.checkboxId, 'checked');
+				storageObject.setItem(segModGroup.checkboxId, 'checked');
 			} else {
-				window.localStorage.removeItem(segModGroup.checkboxId);
+				storageObject.removeItem(segModGroup.checkboxId);
 			}
 		}
 	}
@@ -59,7 +60,6 @@ function enumerateAllModifiers(work) {
 }
 
 function modifySegements(modifier) {
-    "use strict";
     for (var seg in W.model.segments.objects) {
         var segment = W.model.segments.get(seg);
         var attributes = segment.attributes;
@@ -283,7 +283,7 @@ function createSection(sectionItem) {
         segmentColor.style.verticalAlign = "middle";
         
         var segmentBuild = document.createElement('div');
-		var isChecked = window.localStorage.getItem(segMod.getCheckboxId()) === 'checked';
+		var isChecked = storageObject.getItem(segMod.getCheckboxId()) === 'checked';
         segmentBuild.innerHTML = segMod.build(isChecked);
         segmentBuild.style.paddingLeft = "1.5em";
         
@@ -408,8 +408,8 @@ addon.id = "highlight-addon";
 
 addon.innerHTML = '<b>WME Speed</b> ' + version;
 
-for(var i = 0; i < selectSections.length; i++) {
-    addon.appendChild(createSection(selectSections[i]));
+for(var selectSectionsIndex = 0; selectSectionsIndex < selectSections.length; selectSectionsIndex++) {
+    addon.appendChild(createSection(selectSections[selectSectionsIndex]));
 }
 
 var section = document.createElement('div');
@@ -433,8 +433,6 @@ addonContainer.appendChild(addon);
 getId('editor-container').appendChild(stylizer);
 getId('editor-container').appendChild(addonContainer);
 
-debug("Hi There")
-
 // check for AM or CM, and unhide Advanced options
 var advancedMode = false;
 if (W.loginManager != null) {
@@ -453,30 +451,28 @@ enumerateAllModifiers(function(seg) {
     seg.init();
 });
 
-
-
 function createWazeMapEventAction(actionName) {
     debug("register createWazeMapEventAction(actionName)");
+    var action = function() {
+        highlightAllSegments();
+        showWMESpeedPopup();
+    };
     return function() {
-        setTimeout(function() {
-            highlightAllSegments();
-//                    showPopup();
-
-        }, 50);
+        setTimeout(action, 50);
         return true;
     };
 }
 
-function analyzeNodes() {
-    var wazeNodes = new Object();
-    for (var wazeNode in W.model.nodes.objects) {
-        var attachedSegments = [];
-        for(var wazeSegID in wazeNode.data.segIDs) {
-            attachedSegments.push(W.model.segments.objects[wazeSegID]);
-        }
-        wazeNodes[wazeNode.fid] = new WazeNode(wazeNode, attachedSegments);
-    }
-}
+//function analyzeNodes() {
+//    var wazeNodes = new Object();
+//    for (var wazeNode in W.model.nodes.objects) {
+//        var attachedSegments = [];
+//        for(var wazeSegID in wazeNode.data.segIDs) {
+//            attachedSegments.push(W.model.segments.objects[wazeSegID]);
+//        }
+//        wazeNodes[wazeNode.fid] = new WazeNode(wazeNode, attachedSegments);
+//    }
+//}
 
 function createEventAction(eventHolderName, actionName) {
     debug("register createEventAction(" + eventHolderName + "," + actionName + ")");
@@ -485,7 +481,7 @@ function createEventAction(eventHolderName, actionName) {
         highlightAllSegments();
         populateUserList();
         populateCityList();
-//        showPopup();
+        showWMESpeedPopup();
         return true;
     };
 }
@@ -496,7 +492,7 @@ function createHighlighAction(eventHolderName, actionName) {
         if(e.feature.model) {
         debug("HighlightAction(eventHolderName, actionName)");
         highlightSegmentMonitor.updateLatestSegment(e.feature.model);
-        showPopup(e.feature.model);
+        showWMESpeedPopup(e.feature.model);
         highlightSegments(hoverDependentSections);
         return true;
         }
@@ -504,7 +500,6 @@ function createHighlighAction(eventHolderName, actionName) {
 }
 
 var loadFunction = function(e) {
-    "use strict";
     debug("event listener for load");
     initPopup();
     thisUser = W.loginManager.getLoggedInUser();
@@ -518,8 +513,8 @@ var loadFunction = function(e) {
         var eventName = possibleControllerEvents[i];
         W.controller.events.register(eventName, this, createEventAction("controller", eventName));
     }
-    for (var i = 0; i < possibleWazeMapEvents.length; i++) {
-        var eventName = possibleWazeMapEvents[i];
+    for (var j = 0; j < possibleWazeMapEvents.length; j++) {
+        var eventName = possibleWazeMapEvents[j];
         W.map.events.register(eventName, this, createWazeMapEventAction(eventName));
     }
     for (var i = 0; i < possiblePendingControllerEvents.length; i++) {
@@ -546,19 +541,19 @@ var loadFunction = function(e) {
     
     var loadEventFunction = createEventAction("W.controller.events", "loadend");
     W.controller.events.register("loadend", this, function(e) {
-        console.log("Clearing node manager");
+        debug("Clearing node manager");
         NodeManager.clear();
         SegmentManager.clear();
         loadEventFunction.call();
     });
     W.model.actionManager.events.register("afteraction", this, function(e) {
-        console.log("Clearing node manager");
+        debug("Clearing node manager");
         NodeManager.clear();
         SegmentManager.clear();
         loadEventFunction.call();
     });
     Waze.model.actionManager.events.register("afteraction", this, function(e) {
-        console.log("Clearing node manager");
+        debug("Clearing node manager");
         NodeManager.clear();
         SegmentManager.clear();
         loadEventFunction.call();
@@ -566,25 +561,29 @@ var loadFunction = function(e) {
 
 
     if(DEBUG) {
-//        W.selectionManager.registerModelEvents("selectionChanged", this, function(){console.log("sm.blur")});
-        W.selectionManager.events.register("touchstart", this, function(){console.log("sm.mc.touchstart")});
-        //W.selectionManager.layers[0].events.register("beforefeatureselected", this, function(){console.log("sm.mc.beforefeatureselected")});
-        // W.selectionManager.selectControl.events.register("featurehighlighted", this, function(e){console.log("sm.mc.featurehighlighted : ");});
+//        W.selectionManager.registerModelEvents("selectionChanged", this, function(){debug("sm.blur")});
+        W.selectionManager.events.register("touchstart", this, function(){debug("sm.mc.touchstart")});
+        //W.selectionManager.layers[0].events.register("beforefeatureselected", this, function(){debug("sm.mc.beforefeatureselected")});
+        // W.selectionManager.selectControl.events.register("featurehighlighted", this, function(e){debug("sm.mc.featurehighlighted : ");});
 
-//        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){console.log("sm.mc.fh.c.activate")});
-//        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){console.log("sm.mc.fh.c.mouseover")});
-//        selectionManager.modifyControl.featureHover.register("over", this, function(){console.log("sm.mc.fh.-e.over")});
+//        selectionManager.modifyControl.featureHover.control.events.register("activate", this, function(){debug("sm.mc.fh.c.activate")});
+//        selectionManager.modifyControl.featureHover.control.events.register("mouseover", this, function(){debug("sm.mc.fh.c.mouseover")});
+//        selectionManager.modifyControl.featureHover.register("over", this, function(){debug("sm.mc.fh.-e.over")});
     }
 }
 
 debug("registering for events for when window is marked as loaded");
-if(document.readyState === "complete") {
+if (document.readyState === "complete") {
     debug("Already Loaded");
     loadFunction("");
-}
-else {
-    window.addEventListener("load", loadFunction);
-//    W.app._events.register("change:loading", loadFunction);
+} else {
+    if (window) {
+        window.addEventListener("load", loadFunction);
+    } else if (typeof(unsafeWindow) !== 'undefined') {
+        unsafeWindow.addEventListener("load", loadFunction);
+    } else {
+        addEventListener("load", loadFunction);
+    }
+    //    W.app._events.register("change:loading", loadFunction);
 }
 // trigger code when page is fully loaded, to catch any missing bits
-

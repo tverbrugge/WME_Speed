@@ -2,6 +2,7 @@ var WME_SPEED_Popup;
 function initPopup() {
     WME_SPEED_Popup = document.createElement('div');
     WME_SPEED_Popup.id = 'WME_SPEED_Popup';
+    
 
     getId('WazeMap').appendChild(WME_SPEED_Popup);    
    // getId('editor-container').appendChild(WME_SPEED_Popup);    
@@ -40,7 +41,7 @@ function getSegmentIcons(segment) {
 }
 
 function getPropsHTML(segment, matchingActions, namingMap, otherItemsMap, ignoredItems) {
-    "use strict";
+
     matchingActions = typeof matchingActions !== 'undefined' ? matchingActions : {};
     namingMap = typeof namingMap !== 'undefined' ? namingMap : {};
     otherItemsMap = typeof otherItemsMap !== 'undefined' ? otherItemsMap : {};
@@ -113,13 +114,13 @@ function FeatureDetail(detailKey, htmlGetter, turnOnIcon, iconString) {
     this.iconString = iconString;
 }
 
-function showPopup(segment) {
-    "use strict";
-    debug("showPopup segment.CLASS_NAME == " + segment.CLASS_NAME);
+var showWMESpeedPopup = function(segment) {
+
     var user = W.loginManager.getLoggedInUser();
 
 //	var segment = getCurrentHoverSegment();
     if(segment != null && segment.CLASS_NAME == "W.Feature.Vector.Segment") {
+      debug("showPopup segment.CLASS_NAME == " + segment.CLASS_NAME);
 //       console.log(showProps(segment, "segment"));
 //       console.log(showProps(segment.attributes, "segment.attributes"));
 //        var cmpnnts = segment.geometry.components;
@@ -329,6 +330,6 @@ function showPopup(segment) {
         WME_SPEED_Popup.innerHTML = userString;
     }
     else {
-        WME_SPEED_Popup.innerHTML = "";
+        WME_SPEED_Popup.innerHTML = "No segment available";
     }
 }

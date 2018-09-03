@@ -1,11 +1,22 @@
+W = W || {};
 
-var DEBUG = false;
+var DEBUG = true;
+
 function debug(message) {
-    if(DEBUG) {
-        console.log(message);
+    if (DEBUG) {
+        if (typeof(console) !== 'undefined') {
+            console.log("co## " + message + " ##");
+        } else if (typeof(unsafeWindow) !== 'undefined') {
+            unsafeWindow.console.log("us## " + message + " ##");
+        } else if (typeof(window) !== 'undefined') {
+            window.console.log("wc## " + message + " ##");
+        } else if (typeof(GM_log) !== 'undefined') {
+            GM_log("gm## " + message + " ##");
+        } else {
+//            debugger;
+        }
     }
 }
-
 
 var WME_SPEED_UNKNOWN = -987;
 

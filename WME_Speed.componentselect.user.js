@@ -164,7 +164,6 @@ highlightExcessComponents.getBackground = function() {
 
 var highlightCloseComponents = new WMEFunction("_cbHighlightCloseComponents", "Close Components");
 highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
-    "use strict";
 	if(wazeLineSegment.isRoundAbout()) { return; }
     var components = wazeLineSegment.geometry.components;
     if (components.length <= 2) { return }
@@ -179,7 +178,6 @@ highlightCloseComponents.getModifiedAttrs = function(wazeLineSegment) {
     }
 };
 highlightCloseComponents.getBackground = function() {
-    "use strict";
     return MODOBJ_WARN_RGBA;
 };
 

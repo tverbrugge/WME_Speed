@@ -2,10 +2,13 @@
 // @name        WME Speed
 // @namespace   WME_SPEED
 // @include     https://*.waze.com/editor/*
-// @version     0.0.3
+// @match       https://*.waze.com/editor/*
+// @version     0.0.4
+// @run-at      document-start
+// @grant       none 
 // ==/UserScript==
 
-var version = "v0.0.3";
+var version = "v0.0.4";
 if ('undefined' == typeof __WME_SPEED_SCOPE_RUN__) {
     (function page_scope_runner() {
         // If we're _not_ already running in the page, grab the full source

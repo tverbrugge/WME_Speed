@@ -15,7 +15,6 @@ if (!Array.prototype.filter)
 {
   Array.prototype.filter = function(fun /*, thisArg */)
   {
-    "use strict";
 
     if (this === void 0 || this === null)
       throw new TypeError();
@@ -133,7 +132,7 @@ function removeDecimals(strWithDecimal) {
     var preString = strWithDecimal.substring(0, startIndx)
     var postString = strWithDecimal.substring(startIndx + foundNum.length)
     strWithDecimal = preString + postString;
-    console.log("Stripping " + foundNum + " = " + strWithDecimal);
+    debug("Stripping " + foundNum + " = " + strWithDecimal);
   }
   return strWithDecimal;
 }
